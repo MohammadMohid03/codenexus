@@ -15,12 +15,29 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 // Supabase Connection
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Debug: Log environment variables (remove in production)
+console.log('Environment check:');
+console.log('- PORT:', PORT);
+console.log('- SUPABASE_URL:', supabaseUrl ? 'Set ✓' : 'MISSING!');
+console.log('- SUPABASE_ANON_KEY:', supabaseKey ? 'Set ✓' : 'MISSING!');
+
+if (!supabaseUrl || !supabaseKey) {
+    console.error('ERROR: Missing Supabase credentials!');
+    console.error('Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables');
+}
+
+const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Seed Data
 const initialChallenges = [

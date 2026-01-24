@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeNexus | Master the Algorithms</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CodeMirror for Editor -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Particle.js for background effects -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Particle Background -->
+    <div id="particles-js"></div>
+
+    <!-- Toast Container for Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Confetti Canvas for celebrations -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-code-branch logo-icon"></i>
+                <span>CodeNexus</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-page="home"><i class="fa-solid fa-house"></i> Home</li>
+                <li data-page="challenges"><i class="fa-solid fa-layer-group"></i> Challenges</li>
+                <li data-page="battle"><i class="fa-solid fa-gamepad"></i> Battle</li>
+                <li data-page="tournaments"><i class="fa-solid fa-trophy"></i> Tournaments</li>
+                <li data-page="leaderboard"><i class="fa-solid fa-medal"></i> Leaderboard</li>
+                <li data-page="learn"><i class="fa-solid fa-graduation-cap"></i> Learn</li>
+                <li data-page="social"><i class="fa-solid fa-users"></i> Social</li>
+                <li data-page="profile" id="nav-profile-link"><i class="fa-solid fa-user-astronaut"></i> Profile</li>
+            </ul>
+
+            <div class="auth-box" id="auth-section">
+                <button class="auth-btn login-btn" onclick="openModal('login-modal')">Login</button>
+                <button class="auth-btn signup-btn" onclick="openModal('signup-modal')">Sign Up</button>
+            </div>
+
+            <div class="user-stats hidden" id="sidebar-user-stats">
+                <div class="user-info-sidebar">
+                    <img id="sidebar-avatar" src="https://ui-avatars.com/api/?name=User&background=random" alt="Avatar">
+                    <span id="sidebar-username">Guest</span>
+                </div>
+                <div class="level-info">
+                    <span id="sidebar-level">Lvl 1</span>
+                    <span id="sidebar-xp-text">0 / 500 XP</span>
+                </div>
+                <div class="xp-bar">
+                    <div class="xp-fill" id="sidebar-xp-fill" style="width: 0%"></div>
+                </div>
+                <div class="streak-info">
+                    <i class="fa-solid fa-fire"></i>
+                    <span id="streak-count">0 Day Streak</span>
+                </div>
+                <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Home Page -->
+            <section id="home-page" class="page active">
+                <header class="hero">
+                    <div class="typing-container">
+                        <h1>Master the Code.<br><span class="highlight typing-text"></span></h1>
+                    </div>
+                    <p class="hero-subtitle">Practice DSA and basic coding skills in C++, Python, Java, Rust, and C.</p>
+                    <button class="cta-btn pulse-btn" onclick="navigateTo('challenges')">
+                        <span>Start Coding</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </header>
+
+                <div class="stats-grid">
+                    <div class="stat-card" data-tilt>
+                        <div class="card-glow"></div>
+                        <i class="fa-brands fa-python"></i>
+                        <h3>Python</h3>
+                        <p>Popular for AI & Data</p>
+                    </div>
+                    <div class="stat-card" data-tilt>
+                        <div class="card-glow"></div>
+                        <i class="fa-brands fa-java"></i>
+                        <h3>Java</h3>
+                        <p>Enterprise Standard</p>
+                    </div>
+                    <div class="stat-card" data-tilt>
+                        <div class="card-glow"></div>
+                        <i class="fa-solid fa-c"></i>
+                        <h3>C++</h3>
+                        <p>High Performance</p>
+                    </div>
+                    <div class="stat-card" data-tilt>
+                        <div class="card-glow"></div>
+                        <i class="fa-brands fa-rust"></i>
+                        <h3>Rust</h3>
+                        <p>Safety & Speed</p>
+                    </div>
+                </div>
+
+                <!-- Features Section -->
+                <div class="features-section">
+                    <h2 class="section-title">Why CodeNexus?</h2>
+                    <div class="features-grid">
+                        <div class="feature-card fade-in-up">
+                            <div class="feature-icon">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+                            <h3>Real-time Execution</h3>
+                            <p>Run your code instantly with our powerful Piston engine</p>
+                        </div>
+                        <div class="feature-card fade-in-up" style="animation-delay: 0.1s">
+                            <div class="feature-icon">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            <h3>Track Progress</h3>
+                            <p>Monitor your growth with XP, levels, and achievements</p>
+                        </div>
+                        <div class="feature-card fade-in-up" style="animation-delay: 0.2s">
+                            <div class="feature-icon">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                            <h3>Compete Globally</h3>
+                            <p>Climb the leaderboard and challenge other coders</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Challenge Section -->
+                <div class="daily-challenge-section">
+                    <div class="daily-challenge-card">
+                        <div class="daily-badge">
+                            <i class="fa-solid fa-star"></i>
+                            Daily Challenge
+                        </div>
+                        <h3 id="daily-challenge-title">Two Sum</h3>
+                        <p>Complete today's challenge for bonus XP!</p>
+                        <div class="daily-rewards">
+                            <span><i class="fa-solid fa-coins"></i> +150 XP</span>
+                            <span><i class="fa-solid fa-fire"></i> Streak Bonus</span>
+                        </div>
+                        <button class="cta-btn small-btn" onclick="openDailyChallenge()">
+                            Accept Challenge <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Challenges Page -->
+            <section id="challenges-page" class="page">
+                <div class="page-header">
+                    <h2>Coding Challenges</h2>
+                    <div class="challenge-modes">
+                        <button class="mode-btn active" onclick="setMode('normal')">
+                            <i class="fa-solid fa-layer-group"></i> Normal
+                        </button>
+                        <button class="mode-btn" onclick="setMode('timed')">
+                            <i class="fa-solid fa-clock"></i> Timed Mode
+                        </button>
+                        <button class="mode-btn random-btn" onclick="randomChallenge()">
+                            <i class="fa-solid fa-shuffle"></i> Random
+                        </button>
+                    </div>
+                </div>
+                <div class="filters-row">
+                    <div class="filters">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="easy">Easy</button>
+                        <button class="filter-btn" data-filter="medium">Medium</button>
+                        <button class="filter-btn" data-filter="hard">Hard</button>
+                    </div>
+                    <div class="category-filters">
+                        <select id="category-filter" onchange="filterChallenges()">
+                            <option value="all">All Categories</option>
+                            <option value="Arrays">Arrays</option>
+                            <option value="Strings">Strings</option>
+                            <option value="Math">Math</option>
+                            <option value="Recursion">Recursion</option>
+                            <option value="Dynamic Programming">DP</option>
+                            <option value="Trees">Trees</option>
+                            <option value="Graphs">Graphs</option>
+                        </select>
+                        <select id="status-filter" onchange="filterChallenges()">
+                            <option value="all">All Status</option>
+                            <option value="solved">Solved</option>
+                            <option value="unsolved">Unsolved</option>
+                            <option value="bookmarked">Bookmarked</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-bar">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" id="challenge-search" placeholder="Search challenges..." oninput="filterChallenges()">
+                </div>
+                <div class="challenges-stats">
+                    <span><i class="fa-solid fa-check-circle"></i> <span id="solved-count">0</span> Solved</span>
+                    <span><i class="fa-solid fa-circle"></i> <span id="total-challenges">0</span> Total</span>
+                    <span><i class="fa-solid fa-percent"></i> <span id="completion-rate">0%</span> Complete</span>
+                </div>
+                <div class="challenges-grid" id="challenges-list">
+                    <!-- Challenges injected here -->
+                </div>
+            </section>
+
+            <!-- Editor Page -->
+            <section id="editor-page" class="page">
+                <div class="editor-layout">
+                    <div class="problem-pane">
+                        <div class="problem-nav">
+                            <button class="back-btn" onclick="navigateTo('challenges')"><i
+                                    class="fa-solid fa-arrow-left"></i> Back</button>
+                            <div class="problem-actions">
+                                <button class="icon-btn" id="bookmark-btn" onclick="toggleBookmark()" title="Bookmark">
+                                    <i class="fa-regular fa-bookmark"></i>
+                                </button>
+                                <button class="icon-btn" onclick="toggleNotes()" title="Notes">
+                                    <i class="fa-solid fa-sticky-note"></i>
+                                </button>
+                                <button class="icon-btn" onclick="openDiscussions()" title="Discussions">
+                                    <i class="fa-solid fa-comments"></i>
+                                </button>
+                                <button class="icon-btn" onclick="openSolutions()" title="Solutions">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h2 id="problem-title">Problem Title</h2>
+                        <div class="tags">
+                            <span class="badge" id="problem-difficulty">Easy</span>
+                            <span class="badge" id="problem-points">100 XP</span>
+                            <span class="badge category-badge" id="problem-category">Arrays</span>
+                            <span class="badge" id="problem-success-rate"><i class="fa-solid fa-chart-simple"></i> 75%</span>
+                        </div>
+                        <div class="problem-description" id="problem-desc">
+                            <!-- Description injected here -->
+                        </div>
+                        
+                        <!-- Enhanced Hints Section -->
+                        <div class="hints-section glass-card">
+                            <h4><i class="fa-solid fa-lightbulb"></i> Hints</h4>
+                            <div class="hints-list" id="hints-list">
+                                <div class="hint-item locked" onclick="unlockHint(1)">
+                                    <span class="hint-number">1</span>
+                                    <span class="hint-text">Click to unlock (-10 XP)</span>
+                                    <i class="fa-solid fa-lock"></i>
+                                </div>
+                                <div class="hint-item locked" onclick="unlockHint(2)">
+                                    <span class="hint-number">2</span>
+                                    <span class="hint-text">Click to unlock (-15 XP)</span>
+                                    <i class="fa-solid fa-lock"></i>
+                                </div>
+                                <div class="hint-item locked" onclick="unlockHint(3)">
+                                    <span class="hint-number">3</span>
+                                    <span class="hint-text">Click to unlock (-20 XP)</span>
+                                    <i class="fa-solid fa-lock"></i>
+                                </div>
+                            </div>
+                            <button class="small-btn" onclick="openModal('hint-modal')">
+                                <i class="fa-solid fa-book"></i> View Editorial
+                            </button>
+                        </div>
+
+                        <!-- Test Cases Preview -->
+                        <div class="test-cases-section glass-card">
+                            <h4><i class="fa-solid fa-flask"></i> Example Test Cases</h4>
+                            <div class="test-cases" id="test-cases">
+                                <div class="test-case">
+                                    <div class="test-input">
+                                        <strong>Input:</strong>
+                                        <code id="test-input-1">[2, 7, 11, 15], target = 9</code>
+                                    </div>
+                                    <div class="test-output">
+                                        <strong>Output:</strong>
+                                        <code id="test-output-1">[0, 1]</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-pane">
+                        <div class="editor-header">
+                            <select id="language-select">
+                                <option value="cpp">C++</option>
+                                <option value="python">Python</option>
+                                <option value="java">Java</option>
+                                <option value="rust">Rust</option>
+                                <option value="c">C</option>
+                            </select>
+                            <div class="editor-tools">
+                                <button class="tool-btn" onclick="loadTemplate()" title="Load Template">
+                                    <i class="fa-solid fa-file-code"></i>
+                                </button>
+                                <button class="tool-btn" onclick="saveTemplate()" title="Save as Template">
+                                    <i class="fa-solid fa-floppy-disk"></i>
+                                </button>
+                                <button class="tool-btn" onclick="resetCode()" title="Reset Code">
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                </button>
+                                <button class="tool-btn" onclick="copyCode()" title="Copy Code">
+                                    <i class="fa-solid fa-copy"></i>
+                                </button>
+                                <button class="tool-btn" onclick="toggleFullscreen()" title="Fullscreen">
+                                    <i class="fa-solid fa-expand"></i>
+                                </button>
+                            </div>
+                            <div class="timer-display hidden" id="challenge-timer">
+                                <i class="fa-solid fa-clock"></i>
+                                <span id="timer-value">00:00</span>
+                            </div>
+                            <div class="actions">
+                                <button class="run-btn" onclick="runCode()"><i class="fa-solid fa-play"></i> Run</button>
+                                <button class="submit-btn" onclick="submitCode()"><i class="fa-solid fa-check"></i> Submit</button>
+                            </div>
+                        </div>
+                        <div id="editor-container"></div>
+                        <div class="console-pane">
+                            <div class="console-header">
+                                <div class="console-tabs">
+                                    <button class="console-tab active" data-tab="output">Output</button>
+                                    <button class="console-tab" data-tab="testcases">Test Results</button>
+                                </div>
+                                <button class="clear-console-btn" onclick="clearConsole()">Clear</button>
+                            </div>
+                            <div class="console-content" id="console-output-tab">
+                                <pre id="console-output">// Output will appear here...</pre>
+                            </div>
+                            <div class="console-content hidden" id="console-testcases-tab">
+                                <div class="test-results" id="test-results">
+                                    <!-- Test results will appear here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Leaderboard Page -->
+            <section id="leaderboard-page" class="page">
+                <div class="page-header">
+                    <h2>Global Leaderboard</h2>
+                    <p>Top performers this week</p>
+                </div>
+                <div class="leaderboard-stats">
+                    <div class="lb-stat-card">
+                        <i class="fa-solid fa-users"></i>
+                        <span id="total-users">0</span>
+                        <label>Total Coders</label>
+                    </div>
+                    <div class="lb-stat-card">
+                        <i class="fa-solid fa-code"></i>
+                        <span id="total-solved">0</span>
+                        <label>Problems Solved</label>
+                    </div>
+                    <div class="lb-stat-card">
+                        <i class="fa-solid fa-fire-flame-curved"></i>
+                        <span id="top-streak">0</span>
+                        <label>Top Streak</label>
+                    </div>
+                </div>
+                <div class="leaderboard-container">
+                    <div class="top-three" id="top-three">
+                        <!-- Top 3 podium -->
+                    </div>
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>User</th>
+                                <th>Level</th>
+                                <th>XP</th>
+                                <th>Solved</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                            <!-- Leaderboard data -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Battle Page -->
+            <section id="battle-page" class="page">
+                <div class="page-header">
+                    <h2><i class="fa-solid fa-swords"></i> Battle Arena</h2>
+                    <p>Challenge other coders in real-time 1v1 battles!</p>
+                </div>
+                
+                <div class="battle-container">
+                    <div class="battle-queue-section glass-card" id="battle-queue-section">
+                        <div class="battle-icon">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                        <h3>Find an Opponent</h3>
+                        <p>Select difficulty and join the queue to battle!</p>
+                        <div class="difficulty-select">
+                            <button class="diff-btn active" data-diff="easy">Easy</button>
+                            <button class="diff-btn" data-diff="medium">Medium</button>
+                            <button class="diff-btn" data-diff="hard">Hard</button>
+                        </div>
+                        <button class="cta-btn pulse-btn" id="join-queue-btn" onclick="joinBattleQueue()">
+                            <i class="fa-solid fa-search"></i> Find Match
+                        </button>
+                    </div>
+
+                    <div class="battle-waiting hidden" id="battle-waiting">
+                        <div class="waiting-animation">
+                            <div class="spinner"></div>
+                        </div>
+                        <h3>Searching for opponent...</h3>
+                        <p id="queue-time">0:00</p>
+                        <button class="cta-btn secondary" onclick="leaveBattleQueue()">Cancel</button>
+                    </div>
+
+                    <div class="battle-active hidden" id="battle-active">
+                        <div class="battle-header">
+                            <div class="player you">
+                                <img id="battle-player1-avatar" src="" alt="You">
+                                <span id="battle-player1-name">You</span>
+                            </div>
+                            <div class="vs-badge">VS</div>
+                            <div class="player opponent">
+                                <img id="battle-player2-avatar" src="" alt="Opponent">
+                                <span id="battle-player2-name">Opponent</span>
+                            </div>
+                        </div>
+                        <div class="battle-timer-container">
+                            <i class="fa-solid fa-clock"></i>
+                            <span id="battle-timer">0:00</span>
+                        </div>
+                        <div class="battle-content">
+                            <div class="battle-problem">
+                                <h3 id="battle-problem-title">Problem Title</h3>
+                                <p id="battle-problem-desc">Problem description...</p>
+                            </div>
+                            <div class="battle-editor-container">
+                                <div class="battle-editor-header">
+                                    <select id="battle-language" onchange="setBattleEditorMode(this.value)">
+                                        <option value="javascript">JavaScript</option>
+                                        <option value="python">Python</option>
+                                        <option value="java">Java</option>
+                                        <option value="cpp">C++</option>
+                                    </select>
+                                </div>
+                                <textarea id="battle-editor"></textarea>
+                                <button class="cta-btn battle-submit" onclick="submitBattleSolution()">
+                                    <i class="fa-solid fa-paper-plane"></i> Submit Solution
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="battle-history glass-card">
+                        <h3><i class="fa-solid fa-history"></i> Battle History</h3>
+                        <div id="battle-history">
+                            <p class="empty-state">No battles yet. Start your first battle!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tournaments Page -->
+            <section id="tournaments-page" class="page">
+                <div class="page-header">
+                    <h2><i class="fa-solid fa-trophy"></i> Tournaments</h2>
+                    <p>Compete in weekly tournaments for amazing rewards!</p>
+                </div>
+
+                <div class="tournament-container">
+                    <div class="active-tournament glass-card" id="active-tournament">
+                        <div class="tournament-badge">
+                            <i class="fa-solid fa-crown"></i>
+                            ACTIVE
+                        </div>
+                        <h3 id="tournament-name">Weekly Algorithm Challenge</h3>
+                        <p id="tournament-desc">Solve as many challenges as you can before time runs out!</p>
+                        <div class="tournament-info">
+                            <div class="info-item">
+                                <i class="fa-solid fa-clock"></i>
+                                <span id="tournament-time">2d 14h remaining</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fa-solid fa-users"></i>
+                                <span id="tournament-participants">156 participants</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fa-solid fa-coins"></i>
+                                <span id="tournament-prize">500 XP Prize</span>
+                            </div>
+                        </div>
+                        <button class="cta-btn" onclick="joinTournament()">Join Tournament</button>
+                    </div>
+
+                    <div class="tournament-leaderboard glass-card">
+                        <h3>Tournament Leaderboard</h3>
+                        <table class="leaderboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>User</th>
+                                    <th>Score</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tournament-leaderboard">
+                                <!-- Tournament rankings -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="upcoming-tournaments glass-card">
+                        <h3><i class="fa-solid fa-calendar"></i> Upcoming Tournaments</h3>
+                        <div id="upcoming-list">
+                            <div class="upcoming-item">
+                                <span class="upcoming-name">Data Structures Sprint</span>
+                                <span class="upcoming-date">Starts in 5 days</span>
+                            </div>
+                            <div class="upcoming-item">
+                                <span class="upcoming-name">Algorithm Master</span>
+                                <span class="upcoming-date">Starts in 12 days</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Learn Page -->
+            <section id="learn-page" class="page">
+                <div class="page-header">
+                    <h2><i class="fa-solid fa-graduation-cap"></i> Learning Paths</h2>
+                    <p>Structured courses to master programming concepts</p>
+                </div>
+
+                <div class="learn-container">
+                    <!-- Skill Trees -->
+                    <div class="skill-trees glass-card">
+                        <h3><i class="fa-solid fa-sitemap"></i> Skill Tree</h3>
+                        <div class="skill-tree-grid" id="skill-tree">
+                            <div class="skill-node unlocked" data-skill="arrays">
+                                <i class="fa-solid fa-list"></i>
+                                <span>Arrays</span>
+                                <div class="skill-progress">5/5</div>
+                            </div>
+                            <div class="skill-node partial" data-skill="strings">
+                                <i class="fa-solid fa-font"></i>
+                                <span>Strings</span>
+                                <div class="skill-progress">3/5</div>
+                            </div>
+                            <div class="skill-node locked" data-skill="recursion">
+                                <i class="fa-solid fa-rotate"></i>
+                                <span>Recursion</span>
+                                <div class="skill-progress">0/5</div>
+                            </div>
+                            <div class="skill-node locked" data-skill="dp">
+                                <i class="fa-solid fa-brain"></i>
+                                <span>Dynamic Programming</span>
+                                <div class="skill-progress">0/8</div>
+                            </div>
+                            <div class="skill-node locked" data-skill="trees">
+                                <i class="fa-solid fa-sitemap"></i>
+                                <span>Trees</span>
+                                <div class="skill-progress">0/6</div>
+                            </div>
+                            <div class="skill-node locked" data-skill="graphs">
+                                <i class="fa-solid fa-project-diagram"></i>
+                                <span>Graphs</span>
+                                <div class="skill-progress">0/7</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Learning Paths -->
+                    <div class="learning-paths-grid">
+                        <div class="path-card glass-card" data-path="1">
+                            <div class="path-icon beginner">
+                                <i class="fa-solid fa-seedling"></i>
+                            </div>
+                            <h4>Getting Started</h4>
+                            <p>Perfect for beginners learning the basics</p>
+                            <div class="path-info">
+                                <span><i class="fa-solid fa-puzzle-piece"></i> 5 Challenges</span>
+                                <span><i class="fa-solid fa-coins"></i> 100 XP</span>
+                            </div>
+                            <div class="path-progress">
+                                <div class="path-bar" style="width: 0%"></div>
+                            </div>
+                            <button class="cta-btn small-btn" onclick="startLearningPath(1)">Start Path</button>
+                        </div>
+
+                        <div class="path-card glass-card" data-path="2">
+                            <div class="path-icon intermediate">
+                                <i class="fa-solid fa-database"></i>
+                            </div>
+                            <h4>Data Structures 101</h4>
+                            <p>Master fundamental data structures</p>
+                            <div class="path-info">
+                                <span><i class="fa-solid fa-puzzle-piece"></i> 10 Challenges</span>
+                                <span><i class="fa-solid fa-coins"></i> 200 XP</span>
+                            </div>
+                            <div class="path-progress">
+                                <div class="path-bar" style="width: 0%"></div>
+                            </div>
+                            <button class="cta-btn small-btn" onclick="startLearningPath(2)">Start Path</button>
+                        </div>
+
+                        <div class="path-card glass-card" data-path="3">
+                            <div class="path-icon advanced">
+                                <i class="fa-solid fa-rocket"></i>
+                            </div>
+                            <h4>Algorithm Expert</h4>
+                            <p>Advanced algorithmic challenges</p>
+                            <div class="path-info">
+                                <span><i class="fa-solid fa-puzzle-piece"></i> 15 Challenges</span>
+                                <span><i class="fa-solid fa-coins"></i> 500 XP</span>
+                            </div>
+                            <div class="path-progress">
+                                <div class="path-bar" style="width: 0%"></div>
+                            </div>
+                            <button class="cta-btn small-btn" onclick="startLearningPath(3)">Start Path</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Social Page -->
+            <section id="social-page" class="page">
+                <div class="page-header">
+                    <h2><i class="fa-solid fa-users"></i> Social Hub</h2>
+                    <p>Connect with other coders</p>
+                </div>
+
+                <div class="social-container">
+                    <!-- Friends Section -->
+                    <div class="friends-section glass-card">
+                        <div class="section-header">
+                            <h3><i class="fa-solid fa-user-group"></i> Friends</h3>
+                            <button class="small-btn" onclick="openModal('add-friend-modal')">
+                                <i class="fa-solid fa-plus"></i> Add Friend
+                            </button>
+                        </div>
+                        <div class="search-bar">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="friend-search" placeholder="Search users...">
+                        </div>
+                        <div class="friends-list" id="friends-list">
+                            <p class="empty-state">Add friends to see them here!</p>
+                        </div>
+                        <div class="friend-requests" id="friend-requests">
+                            <h4>Friend Requests</h4>
+                            <div id="requests-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Teams Section -->
+                    <div class="teams-section glass-card">
+                        <div class="section-header">
+                            <h3><i class="fa-solid fa-people-group"></i> Teams</h3>
+                            <button class="small-btn" onclick="openModal('create-team-modal')">
+                                <i class="fa-solid fa-plus"></i> Create Team
+                            </button>
+                        </div>
+                        <div class="my-team" id="my-team">
+                            <p class="empty-state">You're not in a team yet</p>
+                        </div>
+                        <div class="team-leaderboard">
+                            <h4>Top Teams</h4>
+                            <div id="teams-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Feed -->
+                    <div class="social-feed glass-card">
+                        <h3><i class="fa-solid fa-rss"></i> Activity Feed</h3>
+                        <div id="activity-feed">
+                            <div class="activity-item">
+                                <img src="https://ui-avatars.com/api/?name=John&background=random" alt="">
+                                <div class="activity-content">
+                                    <p><strong>John</strong> solved <span class="highlight">Two Sum</span></p>
+                                    <span class="activity-time">2 minutes ago</span>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <img src="https://ui-avatars.com/api/?name=Sarah&background=random" alt="">
+                                <div class="activity-content">
+                                    <p><strong>Sarah</strong> reached <span class="highlight">Level 10</span></p>
+                                    <span class="activity-time">15 minutes ago</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Page -->
+            <section id="profile-page" class="page">
+                <div id="profile-logged-in" class="hidden">
+                    <div class="profile-header">
+                        <div class="profile-avatar pulse-avatar">
+                            <img id="profile-img" src="https://ui-avatars.com/api/?name=User&background=random"
+                                alt="User">
+                            <div class="avatar-ring"></div>
+                        </div>
+                        <div class="profile-info">
+                            <h2 id="profile-username">User Name</h2>
+                            <p id="profile-email">email@example.com</p>
+                            <p id="profile-bio" class="profile-bio"></p>
+                            <div class="profile-badges" id="profile-badges">
+                                <span class="badge animated-badge"><i class="fa-solid fa-seedling"></i> Newcomer</span>
+                            </div>
+                            <div class="profile-actions">
+                                <button class="profile-btn" onclick="openModal('settings-modal')">
+                                    <i class="fa-solid fa-gear"></i> Settings
+                                </button>
+                                <button class="profile-btn" onclick="editProfile()">
+                                    <i class="fa-solid fa-pen"></i> Edit Profile
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-content">
+                        <div class="stats-overview">
+                            <div class="stat-box hover-lift">
+                                <div class="stat-icon"><i class="fa-solid fa-check-circle"></i></div>
+                                <span class="stat-value counter" id="profile-solved-count" data-target="0">0</span>
+                                <span class="stat-label">Challenges Solved</span>
+                            </div>
+                            <div class="stat-box hover-lift">
+                                <div class="stat-icon"><i class="fa-solid fa-star"></i></div>
+                                <span class="stat-value counter" id="profile-xp" data-target="0">0</span>
+                                <span class="stat-label">Total XP</span>
+                            </div>
+                            <div class="stat-box hover-lift">
+                                <div class="stat-icon"><i class="fa-solid fa-layer-group"></i></div>
+                                <span class="stat-value" id="profile-level">1</span>
+                                <span class="stat-label">Current Level</span>
+                            </div>
+                            <div class="stat-box hover-lift">
+                                <div class="stat-icon"><i class="fa-solid fa-trophy"></i></div>
+                                <span class="stat-value" id="profile-rank">N/A</span>
+                                <span class="stat-label">Global Rank</span>
+                            </div>
+                            <div class="stat-box hover-lift">
+                                <div class="stat-icon fire"><i class="fa-solid fa-fire"></i></div>
+                                <span class="stat-value" id="profile-streak">0</span>
+                                <span class="stat-label">Day Streak</span>
+                            </div>
+                            <div class="stat-box hover-lift">
+                                <div class="stat-icon"><i class="fa-solid fa-gamepad"></i></div>
+                                <span class="stat-value" id="profile-battles-won">0</span>
+                                <span class="stat-label">Battles Won</span>
+                            </div>
+                        </div>
+
+                        <div class="progress-section glass-card">
+                            <h3><i class="fa-solid fa-chart-line"></i> Level Progress</h3>
+                            <div class="skill-bars">
+                                <div class="skill">
+                                    <span class="skill-name" id="profile-xp-progress-text">Next Level: 0/500 XP</span>
+                                    <div class="skill-bar">
+                                        <div class="skill-fill animated-progress" id="profile-xp-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Heat Map Calendar -->
+                        <div class="heatmap-section glass-card">
+                            <h3><i class="fa-solid fa-calendar-days"></i> Activity Heat Map</h3>
+                            <div class="heatmap-container" id="heatmap">
+                                <!-- Heat map will be generated here -->
+                            </div>
+                            <div class="heatmap-legend">
+                                <span>Less</span>
+                                <div class="legend-box l0"></div>
+                                <div class="legend-box l1"></div>
+                                <div class="legend-box l2"></div>
+                                <div class="legend-box l3"></div>
+                                <div class="legend-box l4"></div>
+                                <span>More</span>
+                            </div>
+                        </div>
+
+                        <!-- Stats Charts -->
+                        <div class="charts-section">
+                            <div class="chart-card glass-card">
+                                <h3><i class="fa-solid fa-chart-pie"></i> Difficulty Distribution</h3>
+                                <div class="donut-chart" id="difficulty-chart">
+                                    <div class="donut-segment easy" style="--value: 60"></div>
+                                    <div class="donut-segment medium" style="--value: 30"></div>
+                                    <div class="donut-segment hard" style="--value: 10"></div>
+                                    <div class="donut-hole">
+                                        <span id="total-solved-chart">0</span>
+                                        <small>Solved</small>
+                                    </div>
+                                </div>
+                                <div class="chart-legend">
+                                    <div class="legend-item"><span class="dot easy"></span> Easy: <span id="easy-count">0</span></div>
+                                    <div class="legend-item"><span class="dot medium"></span> Medium: <span id="medium-count">0</span></div>
+                                    <div class="legend-item"><span class="dot hard"></span> Hard: <span id="hard-count">0</span></div>
+                                </div>
+                            </div>
+                            <div class="chart-card glass-card">
+                                <h3><i class="fa-solid fa-tags"></i> Category Progress</h3>
+                                <div class="category-bars" id="category-bars">
+                                    <div class="category-bar-item">
+                                        <span class="cat-name">Arrays</span>
+                                        <div class="cat-bar"><div class="cat-fill" style="width: 80%"></div></div>
+                                        <span class="cat-count">4/5</span>
+                                    </div>
+                                    <div class="category-bar-item">
+                                        <span class="cat-name">Strings</span>
+                                        <div class="cat-bar"><div class="cat-fill" style="width: 60%"></div></div>
+                                        <span class="cat-count">3/5</span>
+                                    </div>
+                                    <div class="category-bar-item">
+                                        <span class="cat-name">Math</span>
+                                        <div class="cat-bar"><div class="cat-fill" style="width: 40%"></div></div>
+                                        <span class="cat-count">2/5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="achievements-section glass-card">
+                            <h3><i class="fa-solid fa-medal"></i> Achievements</h3>
+                            <div class="achievements-grid" id="achievements-grid">
+                                <div class="achievement locked" data-tooltip="Solve your first challenge">
+                                    <i class="fa-solid fa-baby"></i>
+                                    <span>First Steps</span>
+                                </div>
+                                <div class="achievement locked" data-tooltip="Reach Level 5">
+                                    <i class="fa-solid fa-fire"></i>
+                                    <span>On Fire</span>
+                                </div>
+                                <div class="achievement locked" data-tooltip="Solve 10 challenges">
+                                    <i class="fa-solid fa-bolt"></i>
+                                    <span>Speed Coder</span>
+                                </div>
+                                <div class="achievement locked" data-tooltip="Reach 1000 XP">
+                                    <i class="fa-solid fa-crown"></i>
+                                    <span>XP Master</span>
+                                </div>
+                                <div class="achievement locked" data-tooltip="7-day streak">
+                                    <i class="fa-solid fa-fire-flame-curved"></i>
+                                    <span>Dedicated</span>
+                                </div>
+                                <div class="achievement locked" data-tooltip="Win your first battle">
+                                    <i class="fa-solid fa-swords"></i>
+                                    <span>Warrior</span>
+                                </div>
+                                <div class="achievement locked" data-tooltip="Join a team">
+                                    <i class="fa-solid fa-people-group"></i>
+                                    <span>Team Player</span>
+                                </div>
+                                <div class="achievement locked" data-tooltip="Complete a learning path">
+                                    <i class="fa-solid fa-graduation-cap"></i>
+                                    <span>Graduate</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bookmarks Section -->
+                        <div class="bookmarks-section glass-card">
+                            <h3><i class="fa-solid fa-bookmark"></i> Bookmarked Challenges</h3>
+                            <div class="bookmarks-list" id="bookmarks-list">
+                                <p class="empty-state">No bookmarked challenges yet</p>
+                            </div>
+                        </div>
+
+                        <div class="activity-feed glass-card">
+                            <h3><i class="fa-solid fa-clock-rotate-left"></i> Account Information</h3>
+                            <ul class="activity-list">
+                                <li><strong>Joined:</strong> <span id="profile-joined-date">N/A</span></li>
+                                <li><strong>Account Status:</strong> <span class="badge success glow-badge">Active</span></li>
+                                <li><strong>Best Streak:</strong> <span id="profile-best-streak">0</span> days</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="profile-logged-out" class="logged-out-state">
+                    <div class="lock-animation">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <h2>Join the Brotherhood</h2>
+                    <p>Signup or Login to track your progress and climb the leaderboard.</p>
+                    <div class="auth-options">
+                        <button class="cta-btn pulse-btn" onclick="openModal('login-modal')">Login Now</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content glass-modal">
+            <span class="close-btn" onclick="closeModal('login-modal')">&times;</span>
+            <div class="modal-icon">
+                <i class="fa-solid fa-user-astronaut"></i>
+            </div>
+            <h3>Welcome Back to <span class="highlight">CodeNexus</span></h3>
+            <form id="login-form">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-envelope"></i> Email</label>
+                    <input type="email" id="login-email" required placeholder="example@gmail.com">
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-lock"></i> Password</label>
+                    <div class="password-input">
+                        <input type="password" id="login-password" required placeholder="********">
+                        <button type="button" class="toggle-password" onclick="togglePassword('login-password')">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="cta-btn full-width submit-glow">
+                    <span>Sign In</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <p class="auth-switch">Don't have an account? <a href="#"
+                        onclick="switchModal('login-modal', 'signup-modal')">Sign Up</a></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="signup-modal" class="modal">
+        <div class="modal-content glass-modal">
+            <span class="close-btn" onclick="closeModal('signup-modal')">&times;</span>
+            <div class="modal-icon">
+                <i class="fa-solid fa-rocket"></i>
+            </div>
+            <h3>Join <span class="highlight">CodeNexus</span></h3>
+            <form id="signup-form">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-user"></i> Username</label>
+                    <input type="text" id="signup-username" required placeholder="AlgoMaster">
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-envelope"></i> Email</label>
+                    <input type="email" id="signup-email" required placeholder="example@gmail.com">
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-lock"></i> Password</label>
+                    <div class="password-input">
+                        <input type="password" id="signup-password" required placeholder="********">
+                        <button type="button" class="toggle-password" onclick="togglePassword('signup-password')">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="strength-bar" id="password-strength-bar"></div>
+                    </div>
+                </div>
+                <button type="submit" class="cta-btn full-width submit-glow">
+                    <span>Create Account</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <p class="auth-switch">Already have an account? <a href="#"
+                        onclick="switchModal('signup-modal', 'login-modal')">Login</a></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- XP Popup -->
+    <div id="xp-popup" class="xp-popup hidden">
+        <div class="xp-content">
+            <i class="fa-solid fa-star"></i>
+            <span id="xp-amount">+100 XP</span>
+        </div>
+    </div>
+
+    <!-- Level Up Modal -->
+    <div id="levelup-modal" class="modal">
+        <div class="modal-content levelup-content">
+            <div class="levelup-animation">
+                <i class="fa-solid fa-arrow-up"></i>
+            </div>
+            <h2>Level Up!</h2>
+            <p>Congratulations! You've reached</p>
+            <span class="new-level" id="new-level">Level 2</span>
+            <button class="cta-btn" onclick="closeModal('levelup-modal')">Continue</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content glass-modal wide-modal">
+            <span class="close-btn" onclick="closeModal('settings-modal')">&times;</span>
+            <h3><i class="fa-solid fa-gear"></i> Settings</h3>
+            
+            <div class="settings-tabs">
+                <button class="tab-btn active" data-tab="appearance">Appearance</button>
+                <button class="tab-btn" data-tab="editor">Editor</button>
+                <button class="tab-btn" data-tab="notifications">Notifications</button>
+            </div>
+
+            <div class="settings-content">
+                <div class="tab-content active" id="appearance-tab">
+                    <div class="setting-item">
+                        <label>Theme</label>
+                        <select id="theme-select">
+                            <option value="dark">Dark (Default)</option>
+                            <option value="light">Light</option>
+                            <option value="midnight">Midnight Blue</option>
+                            <option value="forest">Forest Green</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tab-content" id="editor-tab">
+                    <div class="setting-item">
+                        <label>Editor Theme</label>
+                        <select id="editor-theme-select">
+                            <option value="dracula">Dracula</option>
+                            <option value="monokai">Monokai</option>
+                            <option value="material">Material</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Font Size</label>
+                        <input type="range" id="font-size" min="12" max="24" value="14">
+                        <span id="font-size-value">14px</span>
+                    </div>
+                    <div class="setting-item">
+                        <label>Tab Size</label>
+                        <select id="tab-size">
+                            <option value="2">2 spaces</option>
+                            <option value="4" selected>4 spaces</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Default Language</label>
+                        <select id="default-language">
+                            <option value="cpp">C++</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                            <option value="rust">Rust</option>
+                            <option value="c">C</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tab-content" id="notifications-tab">
+                    <div class="setting-item toggle">
+                        <label>Push Notifications</label>
+                        <input type="checkbox" id="push-notifications" checked>
+                    </div>
+                    <div class="setting-item toggle">
+                        <label>Sound Effects</label>
+                        <input type="checkbox" id="sound-effects" checked>
+                    </div>
+                    <div class="setting-item toggle">
+                        <label>Friend Activity</label>
+                        <input type="checkbox" id="friend-activity" checked>
+                    </div>
+                </div>
+            </div>
+            <button class="cta-btn" onclick="saveSettings()">Save Settings</button>
+        </div>
+    </div>
+
+    <!-- Add Friend Modal -->
+    <div id="add-friend-modal" class="modal">
+        <div class="modal-content glass-modal">
+            <span class="close-btn" onclick="closeModal('add-friend-modal')">&times;</span>
+            <h3><i class="fa-solid fa-user-plus"></i> Add Friend</h3>
+            <div class="search-bar">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" id="user-search-input" placeholder="Search by username...">
+            </div>
+            <div class="search-results" id="user-search-results"></div>
+        </div>
+    </div>
+
+    <!-- Create Team Modal -->
+    <div id="create-team-modal" class="modal">
+        <div class="modal-content glass-modal">
+            <span class="close-btn" onclick="closeModal('create-team-modal')">&times;</span>
+            <h3><i class="fa-solid fa-people-group"></i> Create Team</h3>
+            <form id="create-team-form">
+                <div class="form-group">
+                    <label>Team Name</label>
+                    <input type="text" id="team-name" required placeholder="Awesome Coders">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="team-description" placeholder="Describe your team..."></textarea>
+                </div>
+                <button type="submit" class="cta-btn full-width">Create Team</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Code Template Modal -->
+    <div id="template-modal" class="modal">
+        <div class="modal-content glass-modal">
+            <span class="close-btn" onclick="closeModal('template-modal')">&times;</span>
+            <h3><i class="fa-solid fa-file-code"></i> Save as Template</h3>
+            <form id="save-template-form">
+                <div class="form-group">
+                    <label>Template Name</label>
+                    <input type="text" id="template-name" required placeholder="My C++ Template">
+                </div>
+                <div class="form-group toggle">
+                    <label>Set as Default</label>
+                    <input type="checkbox" id="template-default">
+                </div>
+                <button type="submit" class="cta-btn full-width">Save Template</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Achievement Unlocked Modal -->
+    <div id="achievement-modal" class="modal">
+        <div class="modal-content achievement-content">
+            <div class="achievement-animation">
+                <i class="fa-solid fa-medal" id="achievement-icon"></i>
+            </div>
+            <h2>Achievement Unlocked!</h2>
+            <p id="achievement-name">First Steps</p>
+            <span class="achievement-xp">+50 XP</span>
+            <button class="cta-btn" onclick="closeModal('achievement-modal')">Awesome!</button>
+        </div>
+    </div>
+
+    <!-- Hint Purchase Modal -->
+    <div id="hint-modal" class="modal">
+        <div class="modal-content glass-modal">
+            <span class="close-btn" onclick="closeModal('hint-modal')">&times;</span>
+            <h3><i class="fa-solid fa-lightbulb"></i> Get Hint</h3>
+            <div class="hint-levels">
+                <div class="hint-option" onclick="purchaseHint(1)">
+                    <i class="fa-solid fa-circle-1"></i>
+                    <span>Hint 1</span>
+                    <span class="hint-cost">-10 XP</span>
+                </div>
+                <div class="hint-option" onclick="purchaseHint(2)">
+                    <i class="fa-solid fa-circle-2"></i>
+                    <span>Hint 2</span>
+                    <span class="hint-cost">-20 XP</span>
+                </div>
+                <div class="hint-option" onclick="purchaseHint(3)">
+                    <i class="fa-solid fa-circle-3"></i>
+                    <span>Hint 3 (Solution Approach)</span>
+                    <span class="hint-cost">-30 XP</span>
+                </div>
+            </div>
+            <div class="hint-display hidden" id="hint-display">
+                <p id="hint-text"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Discussion Modal -->
+    <div id="discussion-modal" class="modal">
+        <div class="modal-content glass-modal wide-modal">
+            <span class="close-btn" onclick="closeModal('discussion-modal')">&times;</span>
+            <h3><i class="fa-solid fa-comments"></i> Discussions</h3>
+            <div class="discussion-list" id="discussion-list">
+                <p class="empty-state">Loading discussions...</p>
+            </div>
+            <div class="new-discussion">
+                <textarea id="new-discussion-text" placeholder="Share your thoughts or ask a question..."></textarea>
+                <button class="cta-btn" onclick="postDiscussion()">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Solutions Modal -->
+    <div id="solutions-modal" class="modal">
+        <div class="modal-content glass-modal wide-modal">
+            <span class="close-btn" onclick="closeModal('solutions-modal')">&times;</span>
+            <h3><i class="fa-solid fa-code"></i> Community Solutions</h3>
+            <div class="solutions-list" id="solutions-list">
+                <p class="empty-state">Loading solutions...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes Sidebar -->
+    <div id="notes-sidebar" class="notes-sidebar">
+        <div class="notes-header">
+            <h3><i class="fa-solid fa-sticky-note"></i> Notes</h3>
+            <button class="close-notes" onclick="closeNotes()"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="notes-content">
+            <textarea id="challenge-notes" placeholder="Write your notes for this challenge..."></textarea>
+        </div>
+        <div class="notes-footer">
+            <button class="cta-btn small-btn full-width" onclick="saveNotes()">
+                <i class="fa-solid fa-save"></i> Save Notes
+            </button>
+        </div>
+    </div>
+
+    <!-- Template Modal -->
+    <div id="template-modal" class="modal">
+        <div class="modal-content glass-modal">
+            <span class="close-btn" onclick="closeModal('template-modal')">&times;</span>
+            <h3><i class="fa-solid fa-file-code"></i> Code Templates</h3>
+            <div class="templates-list" id="templates-list">
+                <p class="empty-state">No templates saved yet</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts -->
+    <div class="keyboard-shortcuts">
+        <button class="shortcuts-btn" title="Keyboard Shortcuts">
+            <i class="fa-solid fa-keyboard"></i>
+        </button>
+        <div class="shortcuts-panel">
+            <h4>Keyboard Shortcuts</h4>
+            <div class="shortcut-item">
+                <span>Run Code</span>
+                <div class="shortcut-keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">Enter</span>
+                </div>
+            </div>
+            <div class="shortcut-item">
+                <span>Save</span>
+                <div class="shortcut-keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">S</span>
+                </div>
+            </div>
+            <div class="shortcut-item">
+                <span>Close Modal</span>
+                <div class="shortcut-keys">
+                    <span class="key">Esc</span>
+                </div>
+            </div>
+            <div class="shortcut-item">
+                <span>Show Shortcuts</span>
+                <div class="shortcut-keys">
+                    <span class="key">?</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/rust/rust.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

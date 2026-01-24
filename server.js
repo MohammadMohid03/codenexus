@@ -1936,11 +1936,6 @@ app.get('/api/stats/:userId', async (req, res) => {
     }
 });
 
-// Catch-all route - serve index.html for SPA
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);

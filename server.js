@@ -512,10 +512,6 @@ app.post('/api/run', async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
 // ============================================
 // STREAK & ACTIVITY ROUTES
 // ============================================
@@ -1938,4 +1934,10 @@ app.get('/api/stats/:userId', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch stats' });
     }
+});
+// ============================================
+// START SERVER - Must be at the end!
+// ============================================
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
 });

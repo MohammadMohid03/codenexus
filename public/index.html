@@ -44,25 +44,29 @@
                 <span>CodeNexus</span>
             </div>
             <ul class="nav-links">
-                <li class="active" data-page="home"><i class="fa-solid fa-house"></i> Home</li>
-                <li data-page="challenges"><i class="fa-solid fa-layer-group"></i> Challenges</li>
-                <li data-page="battle"><i class="fa-solid fa-gamepad"></i> Battle</li>
-                <li data-page="tournaments"><i class="fa-solid fa-trophy"></i> Tournaments</li>
-                <li data-page="leaderboard"><i class="fa-solid fa-medal"></i> Leaderboard</li>
-                <li data-page="learn"><i class="fa-solid fa-graduation-cap"></i> Learn</li>
-                <li data-page="social"><i class="fa-solid fa-users"></i> Social</li>
-                <li data-page="profile" id="nav-profile-link"><i class="fa-solid fa-user-astronaut"></i> Profile</li>
+                <li class="active" data-page="home"><i class="fa-solid fa-house"></i><span>Home</span></li>
+                <li data-page="challenges"><i class="fa-solid fa-layer-group"></i><span>Challenges</span></li>
+                <li data-page="battle"><i class="fa-solid fa-gamepad"></i><span>Battle</span></li>
+                <li data-page="tournaments"><i class="fa-solid fa-trophy"></i><span>Tournaments</span></li>
+                <li data-page="leaderboard"><i class="fa-solid fa-medal"></i><span>Leaderboard</span></li>
+                <li data-page="learn"><i class="fa-solid fa-graduation-cap"></i><span>Learn</span></li>
+                <li data-page="social"><i class="fa-solid fa-users"></i><span>Social</span></li>
+                <li data-page="profile" id="nav-profile-link"><i class="fa-solid fa-user-astronaut"></i><span>Profile</span></li>
             </ul>
 
             <div class="auth-box" id="auth-section">
-                <button class="auth-btn login-btn" onclick="openModal('login-modal')">Login</button>
-                <button class="auth-btn signup-btn" onclick="openModal('signup-modal')">Sign Up</button>
+                <button class="auth-btn login-btn" onclick="openModal('login-modal')"><i class="fa-solid fa-sign-in-alt"></i><span>Login</span></button>
+                <button class="auth-btn signup-btn" onclick="openModal('signup-modal')"><i class="fa-solid fa-user-plus"></i><span>Sign Up</span></button>
             </div>
 
             <div class="user-stats hidden" id="sidebar-user-stats">
                 <div class="user-info-sidebar">
                     <img id="sidebar-avatar" src="https://ui-avatars.com/api/?name=User&background=random" alt="Avatar">
                     <span id="sidebar-username">Guest</span>
+                    <div class="notification-bell" onclick="toggleNotifications()">
+                        <i class="fa-solid fa-bell"></i>
+                        <span class="notification-badge" id="notification-badge">0</span>
+                    </div>
                 </div>
                 <div class="level-info">
                     <span id="sidebar-level">Lvl 1</span>
@@ -75,7 +79,18 @@
                     <i class="fa-solid fa-fire"></i>
                     <span id="streak-count">0 Day Streak</span>
                 </div>
-                <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i> Logout</button>
+                <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i><span>Logout</span></button>
+                
+                <!-- Notifications Dropdown -->
+                <div class="notifications-dropdown hidden" id="notifications-dropdown">
+                    <div class="notifications-header">
+                        <h4>Notifications</h4>
+                        <button onclick="markAllNotificationsRead()">Mark all read</button>
+                    </div>
+                    <div class="notifications-list" id="notifications-list">
+                        <p class="empty-state">No notifications</p>
+                    </div>
+                </div>
             </div>
         </nav>
 
@@ -162,6 +177,7 @@
                             <span><i class="fa-solid fa-coins"></i> +150 XP</span>
                             <span><i class="fa-solid fa-fire"></i> Streak Bonus</span>
                         </div>
+                        <div class="daily-countdown" id="daily-countdown">Resets in 12h 30m</div>
                         <button class="cta-btn small-btn" onclick="openDailyChallenge()">
                             Accept Challenge <i class="fa-solid fa-arrow-right"></i>
                         </button>
@@ -200,6 +216,7 @@
                             <option value="Math">Math</option>
                             <option value="Recursion">Recursion</option>
                             <option value="Dynamic Programming">DP</option>
+                            <option value="Searching">Searching</option>
                             <option value="Trees">Trees</option>
                             <option value="Graphs">Graphs</option>
                         </select>
@@ -1267,6 +1284,7 @@
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>

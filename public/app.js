@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupFilterButtons();
     setupPasswordStrength();
     setupSearchBar();
+    initUserSearch();
     
     // Load dynamic features
     loadTournaments();
@@ -398,7 +399,58 @@ function openDailyChallenge() {
     if (allChallenges.length > 0) {
         const dailyIndex = new Date().getDate() % allChallenges.length;
         openChallenge(allChallenges[dailyIndex].id);
+        showToast('Daily Challenge started! Complete for bonus XP! 🌟', 'info');
     }
+}
+
+// Update daily challenge display with countdown
+function updateDailyChallenge() {
+    if (allChallenges.length === 0) return;
+    
+    const dailyIndex = new Date().getDate() % allChallenges.length;
+    const dailyChallenge = allChallenges[dailyIndex];
+    
+    const titleEl = document.getElementById('daily-challenge-title');
+    if (titleEl) titleEl.textContent = dailyChallenge.title;
+    
+    // Check if already completed today
+    const today = new Date().toDateString();
+    const completedToday = localStorage.getItem('dailyChallengeCompleted') === today;
+    
+    const dailyBtn = document.querySelector('.daily-challenge-card .cta-btn');
+    if (dailyBtn) {
+        if (completedToday) {
+            dailyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Completed!';
+            dailyBtn.disabled = true;
+            dailyBtn.style.opacity = '0.7';
+        } else {
+            dailyBtn.innerHTML = 'Accept Challenge <i class="fa-solid fa-arrow-right"></i>';
+            dailyBtn.disabled = false;
+            dailyBtn.style.opacity = '1';
+        }
+    }
+    
+    // Start countdown timer
+    updateDailyCountdown();
+}
+
+function updateDailyCountdown() {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    
+    const diff = tomorrow - now;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    const countdownEl = document.getElementById('daily-countdown');
+    if (countdownEl) {
+        countdownEl.textContent = `Resets in ${hours}h ${mins}m`;
+    }
+    
+    // Update every minute
+    setTimeout(updateDailyCountdown, 60000);
 }
 
 // Counter Animation
@@ -524,6 +576,7 @@ function showLoggedInUI(user) {
     updateUserMiniStats(user);
     renderDynamicProfile(user);
     updateAchievements(user);
+    updateStatsCharts();
     
     // Re-render challenges to show solved status
     if (allChallenges.length > 0) {
@@ -635,11 +688,16 @@ async function fetchLeaderboard() {
 function updateLeaderboardStats(data) {
     const totalUsers = document.getElementById('total-users');
     const totalSolved = document.getElementById('total-solved');
+    const topStreak = document.getElementById('top-streak');
     
     if (totalUsers) animateCounter(totalUsers, data.length);
     if (totalSolved) {
         const solved = data.reduce((acc, u) => acc + (u.solvedChallenges ? u.solvedChallenges.length : 0), 0);
         animateCounter(totalSolved, solved);
+    }
+    if (topStreak) {
+        const maxStreak = data.reduce((max, u) => Math.max(max, u.streak || 0), 0);
+        animateCounter(topStreak, maxStreak);
     }
 }
 
@@ -710,9 +768,29 @@ function initEditor() {
         matchBrackets: true,
         indentUnit: 4,
         tabSize: 4,
-        lineWrapping: true,
+        lineWrapping: false,
+        styleActiveLine: true,
+        extraKeys: {
+            'Ctrl-Space': 'autocomplete',
+            'Ctrl-/': 'toggleComment',
+            'Cmd-/': 'toggleComment',
+            'Ctrl-D': 'deleteLine',
+            'Cmd-D': 'deleteLine',
+            'Ctrl-F': 'find',
+            'Cmd-F': 'find',
+            'Tab': function(cm) {
+                if (cm.somethingSelected()) {
+                    cm.indentSelection('add');
+                } else {
+                    cm.replaceSelection('    ', 'end');
+                }
+            }
+        },
         value: '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Solve problem here\n    return 0;\n}'
     });
+    
+    // Add custom resize handler
+    editor.setSize('100%', '400px');
 }
 
 function setEditorMode(lang) {
@@ -779,12 +857,8 @@ async function fetchChallenges() {
         allChallenges = data;
         renderChallenges(data);
         
-        // Update daily challenge title
-        if (data.length > 0) {
-            const dailyIndex = new Date().getDate() % data.length;
-            const dailyTitle = document.getElementById('daily-challenge-title');
-            if (dailyTitle) dailyTitle.textContent = data[dailyIndex].title;
-        }
+        // Update daily challenge display
+        updateDailyChallenge();
     } catch (error) {
         console.error('Error fetching challenges:', error);
     }
@@ -822,6 +896,10 @@ async function openChallenge(id) {
         problemDifficulty.className = `badge ${challenge.difficulty.toLowerCase()}`;
         problemPoints.textContent = `${challenge.points} XP`;
         if (problemCategory) problemCategory.textContent = challenge.category;
+        
+        // Display hints for this challenge
+        displayHints(challenge);
+        
         navigateTo('editor');
 
         // Refresh editor to recalculate layout and prevent line overlap
@@ -1137,21 +1215,34 @@ async function unlockHint(hintNumber) {
     
     const hintKey = `${currentChallengeId}_${hintNumber}`;
     if (unlockedHints[hintKey]) {
-        showToast('Hint already unlocked', 'info');
+        // Show already unlocked hint
+        const hintItem = document.querySelectorAll('.hint-item')[hintNumber - 1];
+        if (hintItem) {
+            showToast('Hint already unlocked', 'info');
+        }
         return;
     }
     
-    const xpCost = [10, 15, 20][hintNumber - 1];
+    const xpCost = hintNumber * 10; // 10, 20, 30 XP
     
     if (!token) {
         showToast('Please login to unlock hints', 'error');
         return;
     }
     
+    // Confirm before unlocking
+    if (!confirm(`Unlock hint ${hintNumber} for ${xpCost} XP?`)) {
+        return;
+    }
+    
     try {
-        const response = await fetch(`/api/challenges/${currentChallengeId}/hints/${hintNumber}`, {
+        const response = await fetch(`/api/challenges/${currentChallengeId}/hint`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ hintLevel: hintNumber })
         });
         
         const data = await response.json();
@@ -1166,17 +1257,44 @@ async function unlockHint(hintNumber) {
                 hintItem.classList.remove('locked');
                 hintItem.classList.add('unlocked');
                 hintItem.querySelector('.hint-text').textContent = data.hint;
-                hintItem.querySelector('i').style.display = 'none';
+                const lockIcon = hintItem.querySelector('i');
+                if (lockIcon) lockIcon.style.display = 'none';
             }
             
-            showToast(`Hint unlocked! -${xpCost} XP`, 'success');
+            if (data.alreadyUnlocked) {
+                showToast('Hint was already unlocked!', 'info');
+            } else {
+                showToast(`Hint unlocked! -${data.xpDeducted || xpCost} XP`, 'success');
+            }
             checkAuthState(); // Refresh user XP
         } else {
             showToast(data.error || 'Failed to unlock hint', 'error');
         }
     } catch (error) {
+        console.error('Hint error:', error);
         showToast('Failed to unlock hint', 'error');
     }
+}
+
+// Function to display hints when opening a challenge
+function displayHints(challenge) {
+    const hintsList = document.getElementById('hints-list');
+    if (!hintsList || !challenge.hints) return;
+    
+    hintsList.innerHTML = challenge.hints.map((hint, index) => {
+        const hintNumber = index + 1;
+        const hintKey = `${challenge.id}_${hintNumber}`;
+        const isUnlocked = unlockedHints[hintKey];
+        const xpCost = hintNumber * 10;
+        
+        return `
+            <div class="hint-item ${isUnlocked ? 'unlocked' : 'locked'}" onclick="${isUnlocked ? '' : `unlockHint(${hintNumber})`}">
+                <span class="hint-number">${hintNumber}</span>
+                <span class="hint-text">${isUnlocked ? unlockedHints[hintKey] : `Click to unlock (-${xpCost} XP)`}</span>
+                ${isUnlocked ? '' : '<i class="fa-solid fa-lock"></i>'}
+            </div>
+        `;
+    }).join('');
 }
 
 // Code Templates
@@ -1499,17 +1617,38 @@ async function startBattle(battle) {
     document.getElementById('battle-waiting')?.classList.add('hidden');
     document.getElementById('battle-active')?.classList.remove('hidden');
     
+    // Set player info
+    const player1Avatar = document.getElementById('battle-player1-avatar');
+    const player1Name = document.getElementById('battle-player1-name');
+    const player2Avatar = document.getElementById('battle-player2-avatar');
+    const player2Name = document.getElementById('battle-player2-name');
+    
+    if (currentUser) {
+        player1Avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username)}&background=38bdf8&color=000`;
+        player1Name.textContent = currentUser.username;
+    }
+    
+    // Set opponent info
+    const opponent = battle.player1_id === currentUser?.id ? battle.player2 : battle.player1;
+    if (opponent) {
+        player2Avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(opponent.username || 'Opponent')}&background=ef4444&color=fff`;
+        player2Name.textContent = opponent.username || 'Opponent';
+    } else {
+        player2Avatar.src = `https://ui-avatars.com/api/?name=Opponent&background=ef4444&color=fff`;
+        player2Name.textContent = 'Opponent';
+    }
+    
     // Set battle problem
     const challenge = battle.challenges || battle;
-    document.getElementById('battle-problem-title').textContent = challenge.title;
-    document.getElementById('battle-problem-desc').textContent = challenge.description;
+    document.getElementById('battle-problem-title').textContent = challenge.title || 'Coding Challenge';
+    document.getElementById('battle-problem-desc').textContent = challenge.description || 'Solve this challenge before your opponent!';
     
     // Initialize battle editor
     const battleEditorEl = document.getElementById('battle-editor');
     if (battleEditorEl && !battleEditor) {
         battleEditor = CodeMirror.fromTextArea(battleEditorEl, {
             mode: 'javascript',
-            theme: 'material-darker',
+            theme: 'dracula',
             lineNumbers: true,
             autoCloseBrackets: true,
             matchBrackets: true,
@@ -1517,10 +1656,16 @@ async function startBattle(battle) {
             tabSize: 4,
             indentWithTabs: false
         });
+        battleEditor.setSize('100%', '300px');
+    }
+    
+    // Clear previous code
+    if (battleEditor) {
+        battleEditor.setValue('// Write your solution here\n');
     }
     
     // Start battle timer
-    const startTime = new Date(battle.started_at).getTime();
+    const startTime = new Date(battle.started_at || Date.now()).getTime();
     updateBattleTimer(startTime);
     
     // Poll for battle updates (opponent submission)
@@ -1600,9 +1745,26 @@ async function submitBattleSolution() {
     }
 }
 
+function setBattleEditorMode(language) {
+    if (!battleEditor) return;
+    
+    const modes = {
+        'javascript': 'javascript',
+        'python': 'python',
+        'java': 'text/x-java',
+        'cpp': 'text/x-c++src',
+        'c': 'text/x-csrc'
+    };
+    
+    battleEditor.setOption('mode', modes[language] || 'javascript');
+}
+
 function endBattle(result) {
     battleState = 'idle';
     currentBattle = null;
+    
+    // Clear any intervals
+    if (battlePollInterval) clearInterval(battlePollInterval);
     
     // Show results modal or return to queue
     setTimeout(() => {
@@ -1623,13 +1785,27 @@ async function loadBattleHistory() {
         const container = document.getElementById('battle-history');
         if (!container) return;
         
-        container.innerHTML = battles.map(b => `
-            <div class="battle-history-item ${b.winner_id === currentUser?.id ? 'won' : 'lost'}">
-                <span class="battle-result">${b.winner_id === currentUser?.id ? '🏆 Won' : '❌ Lost'}</span>
-                <span class="battle-challenge">${b.challenges?.title || 'Challenge'}</span>
-                <span class="battle-date">${formatTime(b.ended_at)}</span>
-            </div>
-        `).join('') || '<p>No battles yet</p>';
+        if (!battles || battles.length === 0) {
+            container.innerHTML = '<p class="empty-state">No battles yet. Start your first battle!</p>';
+            return;
+        }
+        
+        container.innerHTML = battles.map(b => {
+            const won = b.winner_id === currentUser?.id;
+            const opponentName = b.player1_id === currentUser?.id ? 
+                (b.player2?.username || 'Opponent') : 
+                (b.player1?.username || 'Opponent');
+            return `
+                <div class="battle-history-item ${won ? 'won' : 'lost'}">
+                    <div class="battle-result-icon">${won ? '🏆' : '❌'}</div>
+                    <div class="battle-info">
+                        <span class="battle-opponent">vs ${opponentName}</span>
+                        <span class="battle-challenge">${b.challenges?.title || 'Challenge'}</span>
+                    </div>
+                    <span class="battle-date">${formatTime(b.ended_at)}</span>
+                </div>
+            `;
+        }).join('');
     } catch (err) {
         console.error('History error:', err);
     }
@@ -1673,11 +1849,13 @@ async function generateHeatMap() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            activityData = data.reduce((acc, d) => {
-                const dateStr = new Date(d.date).toISOString().split('T')[0];
-                acc[dateStr] = d.count;
-                return acc;
-            }, {});
+            if (Array.isArray(data)) {
+                activityData = data.reduce((acc, d) => {
+                    const dateStr = new Date(d.date).toISOString().split('T')[0];
+                    acc[dateStr] = d.count;
+                    return acc;
+                }, {});
+            }
         } catch (err) {
             console.error('Heatmap error:', err);
         }
@@ -1705,22 +1883,83 @@ async function generateHeatMap() {
 function updateStatsCharts() {
     if (!currentUser) return;
     
-    // Difficulty chart
-    const totalSolved = currentUser.solvedChallenges?.length || 0;
+    const solvedIds = currentUser.solvedChallenges || [];
+    const solvedChallenges = allChallenges.filter(c => solvedIds.includes(c.id));
+    
+    // Calculate actual difficulty counts
+    let easy = 0, medium = 0, hard = 0;
+    solvedChallenges.forEach(c => {
+        const diff = c.difficulty?.toLowerCase();
+        if (diff === 'easy') easy++;
+        else if (diff === 'medium') medium++;
+        else if (diff === 'hard') hard++;
+    });
+    
+    const totalSolved = solvedChallenges.length;
+    
+    // Update difficulty chart counts
     const easyCount = document.getElementById('easy-count');
     const mediumCount = document.getElementById('medium-count');
     const hardCount = document.getElementById('hard-count');
     const totalChart = document.getElementById('total-solved-chart');
     
-    // These would come from actual data
-    const easy = Math.floor(totalSolved * 0.6);
-    const medium = Math.floor(totalSolved * 0.3);
-    const hard = totalSolved - easy - medium;
-    
     if (easyCount) easyCount.textContent = easy;
     if (mediumCount) mediumCount.textContent = medium;
     if (hardCount) hardCount.textContent = hard;
     if (totalChart) totalChart.textContent = totalSolved;
+    
+    // Update donut chart segments
+    const easyPercent = totalSolved > 0 ? Math.round((easy / totalSolved) * 100) : 0;
+    const mediumPercent = totalSolved > 0 ? Math.round((medium / totalSolved) * 100) : 0;
+    const hardPercent = totalSolved > 0 ? Math.round((hard / totalSolved) * 100) : 0;
+    
+    const easySegment = document.querySelector('.donut-segment.easy');
+    const mediumSegment = document.querySelector('.donut-segment.medium');
+    const hardSegment = document.querySelector('.donut-segment.hard');
+    
+    if (easySegment) easySegment.style.setProperty('--value', easyPercent);
+    if (mediumSegment) mediumSegment.style.setProperty('--value', mediumPercent);
+    if (hardSegment) hardSegment.style.setProperty('--value', hardPercent);
+    
+    // Update category progress bars
+    updateCategoryBars(solvedChallenges);
+}
+
+function updateCategoryBars(solvedChallenges) {
+    const categoryBars = document.getElementById('category-bars');
+    if (!categoryBars) return;
+    
+    // Get unique categories from all challenges
+    const categories = {};
+    allChallenges.forEach(c => {
+        const cat = c.category || 'General';
+        if (!categories[cat]) {
+            categories[cat] = { total: 0, solved: 0 };
+        }
+        categories[cat].total++;
+    });
+    
+    // Count solved per category
+    solvedChallenges.forEach(c => {
+        const cat = c.category || 'General';
+        if (categories[cat]) {
+            categories[cat].solved++;
+        }
+    });
+    
+    // Generate category bars HTML
+    const sortedCats = Object.entries(categories).sort((a, b) => b[1].total - a[1].total).slice(0, 6);
+    
+    categoryBars.innerHTML = sortedCats.map(([name, data]) => {
+        const percent = data.total > 0 ? Math.round((data.solved / data.total) * 100) : 0;
+        return `
+            <div class="category-bar-item">
+                <span class="cat-name">${name}</span>
+                <div class="cat-bar"><div class="cat-fill" style="width: ${percent}%"></div></div>
+                <span class="cat-count">${data.solved}/${data.total}</span>
+            </div>
+        `;
+    }).join('');
 }
 
 // Keyboard Shortcuts
@@ -1783,32 +2022,58 @@ function editProfile() {
 }
 
 // Friends System (Dynamic)
-async function searchFriends() {
-    const input = document.getElementById('friend-search-input');
-    if (!input || !input.value.trim()) return;
-    
-    const query = input.value.trim();
+async function searchUsers(query) {
+    if (!query || query.length < 2) {
+        const resultsContainer = document.getElementById('user-search-results');
+        if (resultsContainer) {
+            resultsContainer.innerHTML = '<p class="search-hint">Type at least 2 characters to search</p>';
+        }
+        return;
+    }
     
     try {
         const response = await fetch(`/api/friends/search?q=${encodeURIComponent(query)}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         const users = await response.json();
         
-        const resultsContainer = document.getElementById('friend-search-results');
+        const resultsContainer = document.getElementById('user-search-results');
         if (resultsContainer) {
+            if (!users || users.length === 0) {
+                resultsContainer.innerHTML = '<p class="empty-state">No users found</p>';
+                return;
+            }
+            
             resultsContainer.innerHTML = users.map(u => `
-                <div class="friend-result">
-                    <img src="https://ui-avatars.com/api/?name=${u.username}&background=random" alt="${u.username}">
-                    <span>${u.username}</span>
-                    <span class="level-badge">Lvl ${u.level}</span>
-                    <button onclick="addFriend('${u.id}')" class="btn-small">Add</button>
+                <div class="user-result">
+                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(u.username)}&background=random" alt="${u.username}">
+                    <div class="user-result-info">
+                        <span class="user-result-name">${u.username}</span>
+                        <span class="user-result-level">Level ${u.level || 1}</span>
+                    </div>
+                    <button onclick="addFriend('${u.id}')" class="btn-add-friend">
+                        <i class="fa-solid fa-user-plus"></i> Add
+                    </button>
                 </div>
-            `).join('') || '<p>No users found</p>';
+            `).join('');
         }
     } catch (err) {
         console.error('Search error:', err);
         showToast('Search failed', 'error');
+    }
+}
+
+// Add event listener for user search input
+function initUserSearch() {
+    const searchInput = document.getElementById('user-search-input');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchUsers(e.target.value.trim());
+            }, 300);
+        });
     }
 }
 
@@ -1831,6 +2096,10 @@ async function addFriend(userId) {
         const data = await response.json();
         if (response.ok) {
             showToast('Friend request sent!', 'success');
+            // Clear search results
+            document.getElementById('user-search-input').value = '';
+            document.getElementById('user-search-results').innerHTML = '';
+            closeModal('add-friend-modal');
         } else {
             showToast(data.error || 'Failed to send request', 'error');
         }
@@ -1926,29 +2195,95 @@ async function loadTournaments() {
         const response = await fetch('/api/tournaments');
         const tournaments = await response.json();
         
-        const container = document.getElementById('tournaments-list');
-        if (container) {
-            container.innerHTML = tournaments.map(t => `
-                <div class="tournament-card ${t.status}">
-                    <div class="tournament-header">
-                        <h3>${t.name}</h3>
-                        <span class="tournament-status ${t.status}">${t.status}</span>
-                    </div>
-                    <div class="tournament-info">
-                        <span><i class="fa-solid fa-users"></i> ${t.participants || 0} / ${t.max_participants} players</span>
-                        <span><i class="fa-solid fa-trophy"></i> ${t.prize_description || 'Prizes'}</span>
-                        <span><i class="fa-solid fa-calendar"></i> ${new Date(t.start_time).toLocaleDateString()}</span>
-                    </div>
-                    ${t.status === 'upcoming' ? 
-                        `<button onclick="joinTournament('${t.id}')" class="btn-tournament-join">Join Tournament</button>` : 
-                        `<button class="btn-tournament-view">View Details</button>`
-                    }
-                </div>
-            `).join('') || '<p class="empty-state">No tournaments available</p>';
+        if (!tournaments || tournaments.length === 0) {
+            // Show default tournament info
+            return;
         }
+        
+        // Find active tournament
+        const activeTournament = tournaments.find(t => t.status === 'active') || tournaments[0];
+        const upcomingTournaments = tournaments.filter(t => t.status === 'upcoming');
+        
+        // Update active tournament section
+        if (activeTournament) {
+            document.getElementById('tournament-name').textContent = activeTournament.name;
+            document.getElementById('tournament-desc').textContent = activeTournament.description;
+            document.getElementById('tournament-participants').textContent = `${activeTournament.participants || 0} participants`;
+            document.getElementById('tournament-prize').textContent = activeTournament.prize_description || '500 XP Prize';
+            
+            // Calculate time remaining
+            const endTime = new Date(activeTournament.end_time).getTime();
+            const now = Date.now();
+            const remaining = endTime - now;
+            
+            if (remaining > 0) {
+                const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                document.getElementById('tournament-time').textContent = `${days}d ${hours}h remaining`;
+            } else {
+                document.getElementById('tournament-time').textContent = 'Ended';
+            }
+            
+            // Store active tournament ID for join button
+            window.activeTournamentId = activeTournament.id;
+        }
+        
+        // Update upcoming tournaments list
+        const upcomingList = document.getElementById('upcoming-list');
+        if (upcomingList && upcomingTournaments.length > 0) {
+            upcomingList.innerHTML = upcomingTournaments.map(t => {
+                const startDate = new Date(t.start_time);
+                const daysUntil = Math.ceil((startDate - Date.now()) / (1000 * 60 * 60 * 24));
+                return `
+                    <div class="upcoming-item" onclick="viewTournament('${t.id}')">
+                        <span class="upcoming-name">${t.name}</span>
+                        <span class="upcoming-date">Starts in ${daysUntil} day${daysUntil === 1 ? '' : 's'}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Load tournament leaderboard
+        loadTournamentLeaderboard(activeTournament?.id);
+        
     } catch (err) {
         console.error('Load tournaments error:', err);
     }
+}
+
+async function loadTournamentLeaderboard(tournamentId) {
+    if (!tournamentId) return;
+    
+    try {
+        const response = await fetch(`/api/tournaments/${tournamentId}/leaderboard`);
+        const leaderboard = await response.json();
+        
+        const tbody = document.getElementById('tournament-leaderboard');
+        if (!tbody) return;
+        
+        if (!leaderboard || leaderboard.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No participants yet</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = leaderboard.map((p, i) => `
+            <tr class="${p.user_id === currentUser?.id ? 'highlight' : ''}">
+                <td class="rank">${i + 1}</td>
+                <td class="user">
+                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(p.username || 'User')}&background=random&size=32" alt="">
+                    ${p.username || 'Anonymous'}
+                </td>
+                <td class="score">${p.score || 0}</td>
+                <td class="time">${p.completion_time ? formatTime(p.completion_time) : '-'}</td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        console.error('Load tournament leaderboard error:', err);
+    }
+}
+
+function viewTournament(tournamentId) {
+    showToast('Tournament details coming soon!', 'info');
 }
 
 async function joinTournament(tournamentId) {
@@ -1957,8 +2292,15 @@ async function joinTournament(tournamentId) {
         return;
     }
     
+    // Use the passed ID or the active tournament ID
+    const id = tournamentId || window.activeTournamentId;
+    if (!id) {
+        showToast('No tournament selected', 'error');
+        return;
+    }
+    
     try {
-        const response = await fetch(`/api/tournaments/${tournamentId}/join`, {
+        const response = await fetch(`/api/tournaments/${id}/join`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -2037,40 +2379,79 @@ async function startLearningPath(pathId) {
 
 // Skill Tree (Dynamic)
 async function loadSkillTree() {
-    try {
-        const response = await fetch('/api/skills/tree', {
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
-        const skills = await response.json();
-        
-        const container = document.getElementById('skill-tree-container');
-        if (container) {
-            // Group by category
-            const categories = {};
-            skills.forEach(s => {
-                if (!categories[s.category]) categories[s.category] = [];
-                categories[s.category].push(s);
-            });
-            
-            container.innerHTML = Object.entries(categories).map(([cat, skillList]) => `
-                <div class="skill-category">
-                    <h3>${cat}</h3>
-                    <div class="skills-grid">
-                        ${skillList.map(s => `
-                            <div class="skill-node ${s.unlocked ? 'unlocked' : 'locked'}" 
-                                 data-skill="${s.id}"
-                                 title="${s.description}">
-                                <i class="fa-solid ${s.icon || 'fa-star'}"></i>
-                                <span>${s.name}</span>
-                                <span class="skill-level">Lvl ${s.level || 0}/${s.max_level || 5}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `).join('');
+    const container = document.getElementById('skill-tree');
+    if (!container) return;
+    
+    // Define skill categories with icons
+    const skillCategories = [
+        { id: 'arrays', name: 'Arrays', icon: 'fa-list', category: 'Arrays' },
+        { id: 'strings', name: 'Strings', icon: 'fa-font', category: 'Strings' },
+        { id: 'recursion', name: 'Recursion', icon: 'fa-rotate', category: 'Recursion' },
+        { id: 'dp', name: 'Dynamic Programming', icon: 'fa-brain', category: 'Dynamic Programming' },
+        { id: 'trees', name: 'Trees', icon: 'fa-sitemap', category: 'Trees' },
+        { id: 'graphs', name: 'Graphs', icon: 'fa-project-diagram', category: 'Graphs' }
+    ];
+    
+    // Calculate progress per category based on solved challenges
+    const solvedIds = currentUser?.solvedChallenges || [];
+    const solvedChallenges = allChallenges.filter(c => solvedIds.includes(c.id));
+    
+    // Count challenges per category
+    const categoryStats = {};
+    allChallenges.forEach(c => {
+        const cat = c.category || 'General';
+        if (!categoryStats[cat]) {
+            categoryStats[cat] = { total: 0, solved: 0 };
         }
-    } catch (err) {
-        console.error('Load skills error:', err);
+        categoryStats[cat].total++;
+    });
+    
+    solvedChallenges.forEach(c => {
+        const cat = c.category || 'General';
+        if (categoryStats[cat]) {
+            categoryStats[cat].solved++;
+        }
+    });
+    
+    // Generate skill nodes
+    container.innerHTML = skillCategories.map((skill, index) => {
+        const stats = categoryStats[skill.category] || { total: 5, solved: 0 };
+        const progress = stats.solved;
+        const total = Math.max(stats.total, 5);
+        const percent = (progress / total) * 100;
+        
+        let status = 'locked';
+        if (progress >= total) status = 'unlocked';
+        else if (progress > 0) status = 'partial';
+        else if (index === 0) status = 'partial'; // First skill is always accessible
+        
+        return `
+            <div class="skill-node ${status}" data-skill="${skill.id}" onclick="openSkillDetails('${skill.id}')">
+                <i class="fa-solid ${skill.icon}"></i>
+                <span>${skill.name}</span>
+                <div class="skill-progress">${progress}/${total}</div>
+                <div class="skill-bar">
+                    <div class="skill-fill" style="width: ${percent}%"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openSkillDetails(skillId) {
+    // Find challenges related to this skill/category
+    const skill = skillId.charAt(0).toUpperCase() + skillId.slice(1);
+    const related = allChallenges.filter(c => 
+        c.category?.toLowerCase().includes(skillId) || 
+        c.tags?.includes(skillId)
+    );
+    
+    if (related.length > 0) {
+        // Navigate to challenges with filter
+        showToast(`Found ${related.length} ${skill} challenges!`, 'info');
+        navigateTo('challenges');
+    } else {
+        showToast(`No ${skill} challenges found yet`, 'info');
     }
 }
 
@@ -2190,6 +2571,43 @@ async function markNotificationRead(id) {
         console.error('Mark read error:', err);
     }
 }
+
+function toggleNotifications() {
+    const dropdown = document.getElementById('notifications-dropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('hidden');
+        if (!dropdown.classList.contains('hidden')) {
+            loadNotifications();
+        }
+    }
+}
+
+async function markAllNotificationsRead() {
+    if (!token) return;
+    
+    try {
+        await fetch('/api/notifications/read-all', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        loadNotifications();
+        showToast('All notifications marked as read', 'success');
+    } catch (err) {
+        console.error('Mark all read error:', err);
+    }
+}
+
+// Close notifications when clicking outside
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('notifications-dropdown');
+    const bell = document.querySelector('.notification-bell');
+    // Only process if both elements exist and dropdown is visible
+    if (dropdown && bell && !dropdown.classList.contains('hidden')) {
+        if (!dropdown.contains(e.target) && !bell.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    }
+});
 
 // Settings (Dynamic - save to server)
 async function saveSettings() {

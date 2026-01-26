@@ -145,7 +145,7 @@ const initialChallenges = [
         id: 7,
         title: "Binary Search",
         difficulty: "Medium",
-        category: "Searching",
+        category: "Arrays",
         description: "Given a sorted array and a target, return the index of the target or -1 if not found.\n\nInput Format:\nFirst line: N (size)\nSecond line: N sorted integers\nThird line: Target\n\nOutput Format:\nIndex or -1.",
         points: 150,
         test_cases: [
@@ -154,7 +154,7 @@ const initialChallenges = [
         ],
         hints: ['Array is sorted', 'Compare with middle element', 'Narrow search space by half'],
         editorial: 'Use binary search: compare target with mid, search left or right half accordingly.',
-        tags: ['searching', 'binary-search'],
+        tags: ['arrays', 'binary-search'],
         time_limit: 300
     },
     {
@@ -172,6 +172,305 @@ const initialChallenges = [
         editorial: 'Use two pointers to compare and merge. Time complexity O(n+m).',
         tags: ['arrays', 'two-pointers', 'sorting'],
         time_limit: 600
+    },
+    {
+        id: 9,
+        title: "Valid Parentheses",
+        difficulty: "Easy",
+        category: "Strings",
+        description: "Given a string containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.\n\nInput Format:\nA single string of brackets.\n\nOutput Format:\n'true' if valid, 'false' otherwise.",
+        points: 100,
+        test_cases: [
+            { input: "()", expected: "true" },
+            { input: "()[]{}", expected: "true" },
+            { input: "(]", expected: "false" },
+            { input: "([)]", expected: "false" },
+            { input: "{[]}", expected: "true" }
+        ],
+        hints: ['Use a stack data structure', 'Push opening brackets, pop for closing', 'Check if stack is empty at end'],
+        editorial: 'Use a stack to track opening brackets. For each closing bracket, check if it matches the top of stack.',
+        tags: ['strings', 'stack'],
+        time_limit: 300
+    },
+    {
+        id: 10,
+        title: "FizzBuzz",
+        difficulty: "Easy",
+        category: "Math",
+        description: "Print numbers from 1 to N. For multiples of 3 print 'Fizz', for multiples of 5 print 'Buzz', for multiples of both print 'FizzBuzz'.\n\nInput Format:\nA single integer N.\n\nOutput Format:\nN lines of output.",
+        points: 100,
+        test_cases: [
+            { input: "5", expected: "1\n2\nFizz\n4\nBuzz" },
+            { input: "15", expected: "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz" }
+        ],
+        hints: ['Check divisibility using modulo', 'Check 15 first (both 3 and 5)', 'Use if-else chain properly'],
+        editorial: 'Loop 1 to N, check divisibility by 15 first, then 3, then 5, else print number.',
+        tags: ['math', 'conditionals'],
+        time_limit: 300
+    },
+    {
+        id: 11,
+        title: "Count Vowels",
+        difficulty: "Easy",
+        category: "Strings",
+        description: "Count the number of vowels (a, e, i, o, u) in a given string. Case insensitive.\n\nInput Format:\nA single string.\n\nOutput Format:\nNumber of vowels.",
+        points: 100,
+        test_cases: [
+            { input: "hello", expected: "2" },
+            { input: "AEIOU", expected: "5" },
+            { input: "xyz", expected: "0" },
+            { input: "Programming", expected: "3" }
+        ],
+        hints: ['Convert to lowercase first', 'Use a set for vowels', 'Iterate through each character'],
+        editorial: 'Convert string to lowercase, iterate through chars, check if each is in vowel set.',
+        tags: ['strings', 'iteration'],
+        time_limit: 300
+    },
+    {
+        id: 12,
+        title: "Sum of Digits",
+        difficulty: "Easy",
+        category: "Math",
+        description: "Find the sum of all digits in a given number.\n\nInput Format:\nA single integer N.\n\nOutput Format:\nSum of digits.",
+        points: 100,
+        test_cases: [
+            { input: "123", expected: "6" },
+            { input: "9999", expected: "36" },
+            { input: "0", expected: "0" },
+            { input: "1001", expected: "2" }
+        ],
+        hints: ['Use modulo 10 to get last digit', 'Divide by 10 to remove last digit', 'Loop until number becomes 0'],
+        editorial: 'Extract digits using n%10, add to sum, then n=n/10. Repeat until n is 0.',
+        tags: ['math', 'iteration'],
+        time_limit: 300
+    },
+    {
+        id: 13,
+        title: "Prime Number Check",
+        difficulty: "Easy",
+        category: "Math",
+        description: "Determine if a given number is prime.\n\nInput Format:\nA single integer N.\n\nOutput Format:\n'true' if prime, 'false' otherwise.",
+        points: 100,
+        test_cases: [
+            { input: "7", expected: "true" },
+            { input: "4", expected: "false" },
+            { input: "2", expected: "true" },
+            { input: "1", expected: "false" },
+            { input: "17", expected: "true" }
+        ],
+        hints: ['Check divisibility up to sqrt(n)', 'Handle edge cases: 1 is not prime', '2 is the only even prime'],
+        editorial: 'Check if n < 2 (not prime). Then check divisibility from 2 to sqrt(n).',
+        tags: ['math', 'optimization'],
+        time_limit: 300
+    },
+    {
+        id: 14,
+        title: "Array Sum",
+        difficulty: "Easy",
+        category: "Arrays",
+        description: "Calculate the sum of all elements in an array.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\nSum of array.",
+        points: 100,
+        test_cases: [
+            { input: "5\n1 2 3 4 5", expected: "15" },
+            { input: "3\n-1 0 1", expected: "0" },
+            { input: "1\n42", expected: "42" }
+        ],
+        hints: ['Initialize sum to 0', 'Iterate through all elements', 'Add each element to sum'],
+        editorial: 'Simple iteration through array, accumulating sum. Time complexity O(n).',
+        tags: ['arrays', 'iteration'],
+        time_limit: 300
+    },
+    {
+        id: 15,
+        title: "Remove Duplicates",
+        difficulty: "Medium",
+        category: "Arrays",
+        description: "Remove duplicates from a sorted array and print unique elements.\n\nInput Format:\nFirst line: N (size)\nSecond line: N sorted integers\n\nOutput Format:\nSpace-separated unique elements.",
+        points: 150,
+        test_cases: [
+            { input: "5\n1 1 2 2 3", expected: "1 2 3" },
+            { input: "7\n0 0 1 1 1 2 2", expected: "0 1 2" },
+            { input: "1\n1", expected: "1" }
+        ],
+        hints: ['Array is already sorted', 'Use two pointer technique', 'Compare adjacent elements'],
+        editorial: 'Use two pointers: one for unique position, one for iteration. Skip duplicates.',
+        tags: ['arrays', 'two-pointers'],
+        time_limit: 300
+    },
+    {
+        id: 16,
+        title: "Anagram Check",
+        difficulty: "Medium",
+        category: "Strings",
+        description: "Check if two strings are anagrams of each other (contain same characters).\n\nInput Format:\nFirst line: First string\nSecond line: Second string\n\nOutput Format:\n'true' if anagrams, 'false' otherwise.",
+        points: 150,
+        test_cases: [
+            { input: "listen\nsilent", expected: "true" },
+            { input: "hello\nworld", expected: "false" },
+            { input: "anagram\nnagaram", expected: "true" },
+            { input: "rat\ncar", expected: "false" }
+        ],
+        hints: ['Sort both strings and compare', 'Or use character frequency count', 'Handle case sensitivity'],
+        editorial: 'Sort both strings and compare, or count character frequencies in both strings.',
+        tags: ['strings', 'sorting', 'hash-map'],
+        time_limit: 300
+    },
+    {
+        id: 17,
+        title: "Power of Two",
+        difficulty: "Easy",
+        category: "Math",
+        description: "Check if a given number is a power of 2.\n\nInput Format:\nA single integer N.\n\nOutput Format:\n'true' if power of 2, 'false' otherwise.",
+        points: 100,
+        test_cases: [
+            { input: "1", expected: "true" },
+            { input: "16", expected: "true" },
+            { input: "3", expected: "false" },
+            { input: "0", expected: "false" },
+            { input: "64", expected: "true" }
+        ],
+        hints: ['Use bit manipulation: n & (n-1)', 'Power of 2 has only one bit set', 'Handle n <= 0'],
+        editorial: 'A power of 2 in binary has exactly one 1 bit. n & (n-1) will be 0 for powers of 2.',
+        tags: ['math', 'bit-manipulation'],
+        time_limit: 300
+    },
+    {
+        id: 18,
+        title: "Reverse Array",
+        difficulty: "Easy",
+        category: "Arrays",
+        description: "Reverse an array in place and print the result.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\nSpace-separated reversed array.",
+        points: 100,
+        test_cases: [
+            { input: "5\n1 2 3 4 5", expected: "5 4 3 2 1" },
+            { input: "4\n1 2 3 4", expected: "4 3 2 1" },
+            { input: "1\n1", expected: "1" }
+        ],
+        hints: ['Use two pointers from ends', 'Swap elements moving inward', 'Stop when pointers meet'],
+        editorial: 'Use two pointers at start and end, swap elements and move pointers inward.',
+        tags: ['arrays', 'two-pointers'],
+        time_limit: 300
+    },
+    {
+        id: 19,
+        title: "GCD of Two Numbers",
+        difficulty: "Medium",
+        category: "Math",
+        description: "Find the Greatest Common Divisor (GCD) of two numbers.\n\nInput Format:\nTwo integers A and B on one line.\n\nOutput Format:\nGCD of A and B.",
+        points: 150,
+        test_cases: [
+            { input: "12 8", expected: "4" },
+            { input: "17 5", expected: "1" },
+            { input: "100 25", expected: "25" },
+            { input: "7 7", expected: "7" }
+        ],
+        hints: ['Use Euclidean algorithm', 'GCD(a,b) = GCD(b, a%b)', 'Base case: GCD(a,0) = a'],
+        editorial: 'Euclidean algorithm: repeatedly replace larger with remainder until one becomes 0.',
+        tags: ['math', 'recursion'],
+        time_limit: 300
+    },
+    {
+        id: 20,
+        title: "Climbing Stairs",
+        difficulty: "Medium",
+        category: "Dynamic Programming",
+        description: "You can climb 1 or 2 steps at a time. How many distinct ways can you climb N stairs?\n\nInput Format:\nA single integer N.\n\nOutput Format:\nNumber of distinct ways.",
+        points: 150,
+        test_cases: [
+            { input: "2", expected: "2" },
+            { input: "3", expected: "3" },
+            { input: "5", expected: "8" },
+            { input: "10", expected: "89" }
+        ],
+        hints: ['This is similar to Fibonacci', 'ways(n) = ways(n-1) + ways(n-2)', 'Use dynamic programming'],
+        editorial: 'Classic DP problem. ways[i] = ways[i-1] + ways[i-2]. Base: ways[1]=1, ways[2]=2.',
+        tags: ['dynamic-programming', 'recursion'],
+        time_limit: 300
+    },
+    {
+        id: 21,
+        title: "Longest Common Prefix",
+        difficulty: "Medium",
+        category: "Strings",
+        description: "Find the longest common prefix string amongst an array of strings.\n\nInput Format:\nFirst line: N (number of strings)\nNext N lines: strings\n\nOutput Format:\nLongest common prefix (or empty if none).",
+        points: 150,
+        test_cases: [
+            { input: "3\nflower\nflow\nflight", expected: "fl" },
+            { input: "3\ndog\nracecar\ncar", expected: "" },
+            { input: "2\naa\na", expected: "a" }
+        ],
+        hints: ['Compare characters position by position', 'Start with first string as prefix', 'Shrink prefix as you compare'],
+        editorial: 'Take first string as prefix, compare with each string and shrink prefix accordingly.',
+        tags: ['strings', 'iteration'],
+        time_limit: 300
+    },
+    {
+        id: 22,
+        title: "Single Number",
+        difficulty: "Medium",
+        category: "Arrays",
+        description: "Every element appears twice except for one. Find that single one.\n\nInput Format:\nFirst line: N (size, always odd)\nSecond line: N integers\n\nOutput Format:\nThe single number.",
+        points: 150,
+        test_cases: [
+            { input: "3\n2 2 1", expected: "1" },
+            { input: "5\n4 1 2 1 2", expected: "4" },
+            { input: "1\n1", expected: "1" }
+        ],
+        hints: ['XOR of same numbers is 0', 'XOR all elements together', 'Result will be the single number'],
+        editorial: 'Use XOR: a^a=0 and a^0=a. XORing all numbers leaves only the single number.',
+        tags: ['arrays', 'bit-manipulation'],
+        time_limit: 300
+    },
+    {
+        id: 23,
+        title: "Move Zeroes",
+        difficulty: "Easy",
+        category: "Arrays",
+        description: "Move all 0's to the end of array while maintaining relative order of non-zero elements.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\nSpace-separated result.",
+        points: 100,
+        test_cases: [
+            { input: "5\n0 1 0 3 12", expected: "1 3 12 0 0" },
+            { input: "1\n0", expected: "0" },
+            { input: "4\n1 2 3 4", expected: "1 2 3 4" }
+        ],
+        hints: ['Use two pointer approach', 'One pointer for position to place non-zero', 'Fill remaining with zeros'],
+        editorial: 'Use a write pointer. Copy non-zero elements, then fill rest with zeros.',
+        tags: ['arrays', 'two-pointers'],
+        time_limit: 300
+    },
+    {
+        id: 24,
+        title: "Contains Duplicate",
+        difficulty: "Easy",
+        category: "Arrays",
+        description: "Return true if any value appears at least twice in the array.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\n'true' or 'false'.",
+        points: 100,
+        test_cases: [
+            { input: "4\n1 2 3 1", expected: "true" },
+            { input: "4\n1 2 3 4", expected: "false" },
+            { input: "5\n1 1 1 3 3", expected: "true" }
+        ],
+        hints: ['Use a hash set', 'Check if element exists before adding', 'Or sort and check adjacent'],
+        editorial: 'Use HashSet to track seen elements. If element already in set, return true.',
+        tags: ['arrays', 'hash-map'],
+        time_limit: 300
+    },
+    {
+        id: 25,
+        title: "Maximum Subarray",
+        difficulty: "Hard",
+        category: "Dynamic Programming",
+        description: "Find the contiguous subarray with the largest sum.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\nMaximum subarray sum.",
+        points: 200,
+        test_cases: [
+            { input: "9\n-2 1 -3 4 -1 2 1 -5 4", expected: "6" },
+            { input: "1\n1", expected: "1" },
+            { input: "5\n5 4 -1 7 8", expected: "23" }
+        ],
+        hints: ['Use Kadane\'s algorithm', 'Track current sum and max sum', 'Reset current sum if negative'],
+        editorial: 'Kadane\'s algorithm: currentMax = max(num, currentMax + num), track globalMax.',
+        tags: ['dynamic-programming', 'arrays'],
+        time_limit: 300
     }
 ];
 
@@ -179,8 +478,7 @@ async function seedDatabase() {
     try {
         const { data: existingChallenges, error } = await supabase
             .from('challenges')
-            .select('id')
-            .limit(1);
+            .select('id');
 
         if (error) {
             console.error('Error checking challenges table:', error.message);
@@ -189,6 +487,7 @@ async function seedDatabase() {
         }
 
         if (!existingChallenges || existingChallenges.length === 0) {
+            // No challenges exist, insert all
             const { error: insertError } = await supabase
                 .from('challenges')
                 .insert(initialChallenges);
@@ -196,10 +495,26 @@ async function seedDatabase() {
             if (insertError) {
                 console.error('Error seeding challenges:', insertError.message);
             } else {
-                console.log('Database seeded with initial challenges');
+                console.log('Database seeded with', initialChallenges.length, 'challenges');
             }
         } else {
-            console.log('Challenges already exist, skipping seed');
+            // Check for new challenges to add
+            const existingIds = existingChallenges.map(c => c.id);
+            const newChallenges = initialChallenges.filter(c => !existingIds.includes(c.id));
+            
+            if (newChallenges.length > 0) {
+                const { error: insertError } = await supabase
+                    .from('challenges')
+                    .insert(newChallenges);
+                
+                if (insertError) {
+                    console.error('Error adding new challenges:', insertError.message);
+                } else {
+                    console.log('Added', newChallenges.length, 'new challenges. Total:', initialChallenges.length);
+                }
+            } else {
+                console.log('All', existingChallenges.length, 'challenges exist');
+            }
         }
     } catch (err) {
         console.error('Error seeding database:', err);
@@ -1872,6 +2187,24 @@ app.post('/api/notifications/:id/read', authenticate, async (req, res) => {
         res.json({ status: 'marked_read' });
     } catch (err) {
         res.status(500).json({ error: 'Failed to mark as read' });
+    }
+});
+
+// ============================================
+// NOTIFICATIONS - Mark all as read
+// ============================================
+
+app.post('/api/notifications/read-all', authenticate, async (req, res) => {
+    try {
+        await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('user_id', req.userId)
+            .eq('read', false);
+
+        res.json({ status: 'all_marked_read' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to mark all as read' });
     }
 });
 

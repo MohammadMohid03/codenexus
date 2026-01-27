@@ -5,7 +5,10 @@ let currentUser = null;
 let token = localStorage.getItem('token');
 let allChallenges = [];
 let currentFilter = 'all';
-let codeHistory = JSON.parse(localStorage.getItem('codeHistory') || '{}');
+
+// User-scoped state (initialized after auth)
+let codeHistory = {};
+let unlockedHints = {};
 
 // DOM Elements
 const pages = document.querySelectorAll('.page');
@@ -506,6 +509,7 @@ async function checkAuthState() {
 
         if (response.ok) {
             currentUser = await response.json();
+            await syncUserState();
             showLoggedInUI(currentUser);
         } else {
             logout();
@@ -533,6 +537,10 @@ async function handleLogin(e) {
             token = data.token;
             localStorage.setItem('token', token);
             currentUser = data.user;
+
+            // Sync user state
+            await syncUserState();
+
             showLoggedInUI(currentUser);
             closeModal('login-modal');
             showToast('Welcome back, ' + currentUser.username + '! 🎉', 'success');
@@ -563,6 +571,10 @@ async function handleSignup(e) {
             token = data.token;
             localStorage.setItem('token', token);
             currentUser = data.user;
+
+            // Sync user state
+            await syncUserState();
+
             showLoggedInUI(currentUser);
             closeModal('signup-modal');
             showToast('Welcome to CodeNexus, ' + currentUser.username + '! 🚀', 'success');
@@ -579,10 +591,47 @@ async function handleSignup(e) {
 function logout() {
     token = null;
     currentUser = null;
+    codeHistory = {};
+    unlockedHints = {};
+
     localStorage.removeItem('token');
+
+    // Reset UI
+    if (editor) editor.setValue('');
+    consoleOutput.textContent = 'Output will appear here...';
+    document.getElementById('test-results').innerHTML = '<p class="empty-state">Run or Submit code to see results</p>';
+
     showLoggedOutUI();
     navigateTo('home');
     showToast('You have been logged out', 'info');
+}
+
+async function syncUserState() {
+    if (!currentUser) return;
+
+    const userId = currentUser.id;
+
+    // Load scoped code history
+    codeHistory = JSON.parse(localStorage.getItem(`codeHistory_${userId}`) || '{}');
+
+    // Sync hints from backend
+    try {
+        const response = await fetch('/api/user/unlocked-hints', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const syncData = await response.json();
+        // Ensure we only store booleans in memory to avoid "true" text bug
+        unlockedHints = {};
+        Object.keys(syncData).forEach(key => {
+            unlockedHints[key] = true;
+        });
+        // Cache locally for this user
+        localStorage.setItem(`unlockedHints_${userId}`, JSON.stringify(unlockedHints));
+    } catch (error) {
+        console.error('Failed to sync hints:', error);
+        // Fallback to local cache if offline
+        unlockedHints = JSON.parse(localStorage.getItem(`unlockedHints_${userId}`) || '{}');
+    }
 }
 
 function showLoggedInUI(user) {
@@ -905,11 +954,11 @@ function renderChallenges(challenges) {
 }
 
 async function openChallenge(id) {
-    // Save current code before switching
-    if (currentChallengeId && editor) {
-        const currentCode = editor.getValue();
-        codeHistory[currentChallengeId] = currentCode;
-        localStorage.setItem('codeHistory', JSON.stringify(codeHistory));
+    // Save current code to user-scoped history
+    if (currentChallengeId && currentUser) {
+        const code = editor.getValue();
+        codeHistory[currentChallengeId] = code;
+        localStorage.setItem(`codeHistory_${currentUser.id}`, JSON.stringify(codeHistory));
     }
 
     currentChallengeId = id;
@@ -952,6 +1001,26 @@ async function openChallenge(id) {
                 editor.setValue(template);
             }
             setTimeout(() => editor.refresh(), 100);
+        }
+
+        // Update bookmark button state
+        const btn = document.getElementById('bookmark-btn');
+        if (btn) {
+            const icon = btn.querySelector('i');
+            if (typeof bookmarkedChallenges !== 'undefined' && bookmarkedChallenges.includes(id)) {
+                icon.classList.remove('fa-regular');
+                icon.classList.add('fa-solid');
+                btn.classList.add('bookmarked');
+            } else {
+                icon.classList.remove('fa-solid');
+                icon.classList.add('fa-regular');
+                btn.classList.remove('bookmarked');
+            }
+        }
+
+        // Start timer if in timed mode
+        if (typeof currentMode !== 'undefined' && currentMode === 'timed') {
+            if (typeof startTimer === 'function') startTimer(10);
         }
     }
 }
@@ -1351,8 +1420,8 @@ async function loadSolutions() {
     }
 }
 
-// Hints System
-let unlockedHints = JSON.parse(localStorage.getItem('unlockedHints') || '{}');
+// Hints System (State is synchronized in syncUserState)
+
 
 // Custom themed confirmation dialog
 function showConfirm(title, message) {
@@ -1393,12 +1462,10 @@ async function unlockHint(hintNumber) {
     if (!currentChallengeId) return;
 
     const hintKey = `${currentChallengeId}_${hintNumber}`;
+    const userId = currentUser ? currentUser.id : 'guest';
+
     if (unlockedHints[hintKey]) {
-        // Show already unlocked hint
-        const hintItem = document.querySelectorAll('.hint-item')[hintNumber - 1];
-        if (hintItem) {
-            showToast('Hint already unlocked', 'info');
-        }
+        showToast('Hint already unlocked', 'info');
         return;
     }
 
@@ -1430,8 +1497,10 @@ async function unlockHint(hintNumber) {
         const data = await response.json();
 
         if (response.ok) {
-            unlockedHints[hintKey] = data.hint;
-            localStorage.setItem('unlockedHints', JSON.stringify(unlockedHints));
+            unlockedHints[hintKey] = true; // Use boolean for consistency
+            if (currentUser) {
+                localStorage.setItem(`unlockedHints_${currentUser.id}`, JSON.stringify(unlockedHints));
+            }
 
             // Update UI - refresh the hints display
             const challenge = allChallenges.find(c => c.id === currentChallengeId);
@@ -1477,9 +1546,9 @@ function displayHints(challenge) {
     hintsList.innerHTML = hints.map((hint, index) => {
         const hintNumber = index + 1;
         const hintKey = `${challenge.id}_${hintNumber}`;
-        const isUnlocked = unlockedHints[hintKey];
+        const isUnlocked = unlockedHints[hintKey] === true;
         const xpCost = hintNumber * 10;
-        const hintText = isUnlocked ? (typeof unlockedHints[hintKey] === 'string' ? unlockedHints[hintKey] : hints[index]) : `Click to unlock (-${xpCost} XP)`;
+        const hintText = isUnlocked ? (hints[index] || 'Hint content available') : `Click to unlock (-${xpCost} XP)`;
 
         return `
             <div class="hint-item ${isUnlocked ? 'unlocked' : 'locked'}" ${isUnlocked ? '' : `onclick="unlockHint(${hintNumber})"`}>
@@ -2905,41 +2974,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 500);
 });
 
-// Update the enhanced openChallenge function
-const originalOpenChallenge = openChallenge;
-openChallenge = async function (id) {
-    await originalOpenChallenge(id);
 
-    // Update bookmark button state
-    const btn = document.getElementById('bookmark-btn');
-    if (btn) {
-        const icon = btn.querySelector('i');
-        if (bookmarkedChallenges.includes(id)) {
-            icon.classList.remove('fa-regular');
-            icon.classList.add('fa-solid');
-            btn.classList.add('bookmarked');
-        } else {
-            icon.classList.remove('fa-solid');
-            icon.classList.add('fa-regular');
-            btn.classList.remove('bookmarked');
-        }
-    }
-
-    // Load any unlocked hints
-    const hints = document.querySelectorAll('.hint-item');
-    hints.forEach((hint, i) => {
-        const hintKey = `${id}_${i + 1}`;
-        if (unlockedHints[hintKey]) {
-            hint.classList.remove('locked');
-            hint.classList.add('unlocked');
-            hint.querySelector('.hint-text').textContent = unlockedHints[hintKey];
-            const lockIcon = hint.querySelector('i');
-            if (lockIcon) lockIcon.style.display = 'none';
-        }
-    });
-
-    // Start timer if in timed mode
-    if (currentMode === 'timed') {
-        startTimer(10);
-    }
-};

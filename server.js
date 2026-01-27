@@ -1653,6 +1653,29 @@ app.post('/api/learning-paths/:id/start', authenticate, async (req, res) => {
     }
 });
 
+// Get all hints unlocked by the current user
+app.get('/api/user/unlocked-hints', authenticate, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('hint_usage')
+            .select('challenge_id, hint_level')
+            .eq('user_id', req.userId);
+
+        if (error) throw error;
+
+        // Convert to a format easy for the frontend to consume
+        const unlocked = {};
+        data.forEach(h => {
+            unlocked[`${h.challenge_id}_${h.hint_level}`] = true;
+        });
+
+        res.json(unlocked);
+    } catch (err) {
+        console.error('Fetch hints error:', err);
+        res.status(500).json({ error: 'Failed to fetch unlocked hints' });
+    }
+});
+
 // Get hints (costs XP)
 app.post('/api/challenges/:id/hint', authenticate, async (req, res) => {
     try {

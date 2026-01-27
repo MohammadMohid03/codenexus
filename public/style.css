@@ -2562,12 +2562,70 @@ select:hover {
 }
 
 .hint-item.unlocked {
-    background: rgba(34, 197, 94, 0.1);
+    background: rgba(34, 197, 94, 0.15);
     border-left: 3px solid var(--success);
+    cursor: default;
+}
+
+.hint-item.unlocked .hint-text {
+    color: #e2e8f0;
+    font-weight: 400;
 }
 
 .hint-item.unlocked i {
     display: none;
+}
+
+/* Custom Confirmation Modal */
+.confirm-modal-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.confirm-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--secondary));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-icon i {
+    font-size: 2rem;
+    color: #000;
+}
+
+.confirm-modal-content h3 {
+    margin-bottom: 0.5rem;
+    font-size: 1.4rem;
+}
+
+.confirm-modal-content p {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+}
+
+.confirm-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.confirm-buttons .cta-btn {
+    min-width: 120px;
+}
+
+.confirm-buttons .cta-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.confirm-buttons .cta-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .hint-number {
@@ -4818,4 +4876,119 @@ textarea:focus,
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
+/* Competitive Programming Features */
+.test-results {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.test-result-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.test-result-card:hover {
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.test-result-card.passed {
+    border-left: 4px solid var(--success);
+}
+
+.test-result-card.failed {
+    border-left: 4px solid var(--error);
+}
+
+.test-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.test-status-pill {
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.test-status-pill.success {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+
+.test-status-pill.danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.test-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    flex-grow: 1;
+}
+
+.test-time {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.test-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.detail-item label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+}
+
+.detail-item pre {
+    background: #000;
+    padding: 0.8rem;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+.hidden-msg {
+    font-style: italic;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    text-align: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.test-memory {
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    padding: 2px 8px;
+    background: rgba(56, 189, 248, 0.1);
+    border-radius: 4px;
 }

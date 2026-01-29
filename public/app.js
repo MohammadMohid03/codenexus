@@ -61,6 +61,7 @@ let isDeleting = false;
 document.addEventListener('DOMContentLoaded', () => {
     initParticles();
     initEditor();
+    initBattleDifficulty();
     fetchChallenges();
     setupNavigation();
     fetchLeaderboard();
@@ -75,6 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTournaments();
     loadLearningPaths();
     loadActivityFeed();
+
+    // Clean up any stale battle queue entries on page load
+    // This ensures users don't get matched from previous sessions
+    cleanupBattleStateOnLoad();
 
     // Language Change Listener
     languageSelect.addEventListener('change', (e) => {
@@ -102,6 +107,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Keyboard shortcuts button
+    const shortcutsBtn = document.querySelector('.shortcuts-btn');
+    if (shortcutsBtn) {
+        shortcutsBtn.addEventListener('click', () => {
+            const panel = document.querySelector('.shortcuts-panel');
+            if (panel) panel.classList.toggle('visible');
+        });
+    }
 });
 
 // Initialize Particles Background
@@ -118,7 +132,6 @@ function initParticles() {
                     enable: true,
                     distance: 150,
                     color: '#38bdf8',
-                    opacity: 0.1,
                     width: 1
                 },
                 move: {
@@ -589,6 +602,9 @@ async function handleSignup(e) {
 }
 
 function logout() {
+    // Reset battle state BEFORE clearing token
+    resetBattleState();
+
     token = null;
     currentUser = null;
     codeHistory = {};
@@ -604,6 +620,39 @@ function logout() {
     showLoggedOutUI();
     navigateTo('home');
     showToast('You have been logged out', 'info');
+}
+
+// Reset battle state - call on logout and page load
+async function resetBattleState() {
+    // Clear all battle intervals
+    if (queueTimer) clearInterval(queueTimer);
+    if (battlePollInterval) clearInterval(battlePollInterval);
+    if (battleTimerInterval) clearInterval(battleTimerInterval);
+
+    queueTimer = null;
+    battlePollInterval = null;
+    battleTimerInterval = null;
+
+    // Reset state variables
+    battleState = 'idle';
+    currentBattle = null;
+    queueStartTime = null;
+
+    // Leave the queue on the server (if logged in)
+    if (token) {
+        try {
+            await fetch('/api/battles/queue', {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        } catch (err) {
+            // Silently fail - we're logging out anyway
+            console.log('Queue cleanup on logout:', err.message);
+        }
+    }
+
+    // Reset UI to queue state
+    showBattleQueue();
 }
 
 async function syncUserState() {
@@ -697,8 +746,10 @@ function renderDynamicProfile(user) {
     if (profileXpBar) profileXpBar.style.width = `${progress}%`;
     if (profileXpProgressText) profileXpProgressText.textContent = `Next Level: ${xpInLevel}/500 XP`;
 
-    if (user.joinedAt && profileJoinedDate) {
-        const date = new Date(user.joinedAt);
+    // Handle joined date - server returns created_at
+    const joinDate = user.created_at || user.joinedAt;
+    if (joinDate && profileJoinedDate) {
+        const date = new Date(joinDate);
         profileJoinedDate.textContent = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     }
 
@@ -993,9 +1044,10 @@ async function openChallenge(id) {
         if (editor) {
             const savedCode = codeHistory[id];
             if (savedCode) {
+                // Load the user's saved code
                 editor.setValue(savedCode);
             } else {
-                // Load default based on language
+                // No saved code, load default template for the selected language
                 const lang = languageSelect.value;
                 const template = getDefaultTemplate(lang);
                 editor.setValue(template);
@@ -1187,6 +1239,323 @@ function renderTestResults(results, type) {
 }
 
 // --- UTILS ---
+
+// Helper function to escape HTML (prevents XSS)
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Helper function to format time relative to now
+function formatTime(dateString) {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffSeconds = Math.floor((now - date) / 1000);
+
+    if (diffSeconds < 60) return 'Just now';
+    if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)} minutes ago`;
+    if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)} hours ago`;
+    if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)} days ago`;
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Load user settings from localStorage
+function loadSettings() {
+    const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+
+    // Apply theme setting
+    if (settings.theme) {
+        document.documentElement.setAttribute('data-theme', settings.theme);
+    }
+
+    // Apply editor settings if editor exists
+    if (editor && settings.fontSize) {
+        editor.getWrapperElement().style.fontSize = settings.fontSize + 'px';
+    }
+}
+
+// Save settings to localStorage
+function saveSettings() {
+    const settings = {
+        theme: document.getElementById('theme-select')?.value || 'dark',
+        editorTheme: document.getElementById('editor-theme-select')?.value || 'dracula',
+        fontSize: document.getElementById('font-size')?.value || 14,
+        tabSize: document.getElementById('tab-size')?.value || 4,
+        defaultLanguage: document.getElementById('default-language')?.value || 'cpp',
+        pushNotifications: document.getElementById('push-notifications')?.checked ?? true,
+        soundEffects: document.getElementById('sound-effects')?.checked ?? true,
+        friendActivity: document.getElementById('friend-activity')?.checked ?? true
+    };
+
+    localStorage.setItem('userSettings', JSON.stringify(settings));
+    loadSettings();
+    closeModal('settings-modal');
+    showToast('Settings saved!', 'success');
+}
+
+// Load user streak info
+async function loadStreak() {
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/streak', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        const streakCount = document.getElementById('streak-count');
+        if (streakCount) {
+            streakCount.textContent = `${data.current_streak || 0} Day Streak`;
+        }
+
+        const profileStreak = document.getElementById('profile-streak');
+        if (profileStreak) {
+            profileStreak.textContent = data.current_streak || 0;
+        }
+
+        const profileBestStreak = document.getElementById('profile-best-streak');
+        if (profileBestStreak) {
+            profileBestStreak.textContent = data.best_streak || 0;
+        }
+    } catch (err) {
+        console.error('Failed to load streak:', err);
+    }
+}
+
+// Load notifications
+async function loadNotifications() {
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/notifications', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            // API might not exist yet, that's okay
+            return;
+        }
+
+        const notifications = await response.json();
+        const badge = document.getElementById('notification-badge');
+        const list = document.getElementById('notifications-list');
+
+        if (badge) {
+            const unreadCount = notifications.filter(n => !n.read).length;
+            badge.textContent = unreadCount;
+            badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+        }
+
+        if (list && notifications.length > 0) {
+            list.innerHTML = notifications.slice(0, 5).map(n => `
+                <div class="notification-item ${n.read ? '' : 'unread'}">
+                    <i class="fa-solid fa-${n.type === 'achievement' ? 'trophy' : 'bell'}"></i>
+                    <span>${n.message}</span>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        // Notifications endpoint might not exist - that's okay
+        console.log('Notifications not available');
+    }
+}
+
+// Toggle notifications dropdown
+function toggleNotifications() {
+    const dropdown = document.getElementById('notifications-dropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('hidden');
+    }
+}
+
+// Mark all notifications as read
+async function markAllNotificationsRead() {
+    if (!token) return;
+
+    try {
+        await fetch('/api/notifications/read', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        loadNotifications();
+    } catch (err) {
+        console.log('Could not mark notifications as read');
+    }
+}
+
+// Load skill tree progress
+function loadSkillTree() {
+    if (!currentUser) return;
+
+    const solvedIds = currentUser.solvedChallenges || [];
+    const solvedChallenges = allChallenges.filter(c => solvedIds.includes(c.id));
+
+    // Count solved by category
+    const categoryProgress = {};
+    allChallenges.forEach(c => {
+        const cat = c.category || 'General';
+        if (!categoryProgress[cat]) {
+            categoryProgress[cat] = { total: 0, solved: 0 };
+        }
+        categoryProgress[cat].total++;
+    });
+
+    solvedChallenges.forEach(c => {
+        const cat = c.category || 'General';
+        if (categoryProgress[cat]) {
+            categoryProgress[cat].solved++;
+        }
+    });
+
+    // Update skill tree nodes
+    document.querySelectorAll('.skill-node').forEach(node => {
+        const skill = node.dataset.skill;
+        const categoryMap = {
+            'arrays': 'Arrays',
+            'strings': 'Strings',
+            'recursion': 'Recursion',
+            'dp': 'Dynamic Programming',
+            'trees': 'Trees',
+            'graphs': 'Graphs'
+        };
+
+        const catName = categoryMap[skill];
+        if (catName && categoryProgress[catName]) {
+            const progress = categoryProgress[catName];
+            const progressEl = node.querySelector('.skill-progress');
+            if (progressEl) {
+                progressEl.textContent = `${progress.solved}/${progress.total}`;
+            }
+
+            // Update node state
+            node.classList.remove('locked', 'partial', 'unlocked');
+            if (progress.solved === 0) {
+                node.classList.add('locked');
+            } else if (progress.solved < progress.total) {
+                node.classList.add('partial');
+            } else {
+                node.classList.add('unlocked');
+            }
+        }
+    });
+}
+
+// Load tournaments (placeholder - tournaments need backend support)
+function loadTournaments() {
+    // Tournaments are currently static in HTML
+    // This can be expanded when backend support is added
+    console.log('Tournaments loaded');
+}
+
+// Load learning paths progress
+function loadLearningPaths() {
+    if (!currentUser) return;
+
+    // Update path progress based on solved challenges
+    const solvedCount = currentUser.solvedChallenges?.length || 0;
+
+    document.querySelectorAll('.path-card').forEach(card => {
+        const pathNum = card.dataset.path;
+        const progressBar = card.querySelector('.path-bar');
+
+        if (progressBar) {
+            let progress = 0;
+            if (pathNum === '1') progress = Math.min((solvedCount / 5) * 100, 100);
+            else if (pathNum === '2') progress = Math.min((solvedCount / 10) * 100, 100);
+            else if (pathNum === '3') progress = Math.min((solvedCount / 15) * 100, 100);
+
+            progressBar.style.width = `${progress}%`;
+        }
+    });
+}
+
+// Start a learning path
+function startLearningPath(pathId) {
+    // Filter challenges for this path and open the first unsolved one
+    let pathChallenges = [];
+
+    if (pathId === 1) {
+        pathChallenges = allChallenges.filter(c => c.difficulty === 'Easy').slice(0, 5);
+    } else if (pathId === 2) {
+        pathChallenges = allChallenges.filter(c => ['Arrays', 'Strings'].includes(c.category)).slice(0, 10);
+    } else if (pathId === 3) {
+        pathChallenges = allChallenges.filter(c => c.difficulty !== 'Easy').slice(0, 15);
+    }
+
+    const solvedIds = currentUser?.solvedChallenges || [];
+    const unsolved = pathChallenges.find(c => !solvedIds.includes(c.id));
+
+    if (unsolved) {
+        openChallenge(unsolved.id);
+        showToast(`Starting learning path ${pathId}!`, 'success');
+    } else if (pathChallenges.length > 0) {
+        openChallenge(pathChallenges[0].id);
+        showToast('Path completed! Reviewing challenges...', 'info');
+    } else {
+        showToast('No challenges available for this path', 'error');
+    }
+}
+
+// Load activity feed
+function loadActivityFeed() {
+    // Activity feed is currently static in HTML
+    // This can be expanded when backend support is added
+    console.log('Activity feed loaded');
+}
+
+// Load friends list
+async function loadFriends() {
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/friends', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) return;
+
+        const friends = await response.json();
+        const list = document.getElementById('friends-list');
+
+        if (list) {
+            if (!friends || friends.length === 0) {
+                list.innerHTML = '<p class="empty-state">Add friends to see them here!</p>';
+                return;
+            }
+
+            list.innerHTML = friends.map(f => `
+                <div class="friend-item">
+                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(f.username)}&background=random" alt="${f.username}">
+                    <div class="friend-info">
+                        <span class="friend-name">${f.username}</span>
+                        <span class="friend-level">Level ${f.level || 1}</span>
+                    </div>
+                    <span class="friend-status ${f.online ? 'online' : ''}"></span>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        console.log('Friends not available');
+    }
+}
+
+// Purchase hint (alias for unlockHint to match HTML onclick)
+function purchaseHint(hintNumber) {
+    unlockHint(hintNumber);
+}
+
+// Join tournament
+function joinTournament() {
+    if (!token) {
+        showToast('Please login to join tournaments', 'error');
+        return;
+    }
+    showToast('Joined tournament! Good luck! 🏆', 'success');
+}
 
 function openModal(id) {
     const modal = document.getElementById(id);
@@ -1602,8 +1971,14 @@ function useTemplate(index) {
 function saveTemplate() {
     if (!editor) return;
 
-    const name = prompt('Enter template name:');
-    if (!name) return;
+    // Get name from input field instead of prompt
+    const nameInput = document.getElementById('template-name');
+    const name = nameInput ? nameInput.value.trim() : '';
+
+    if (!name) {
+        showToast('Please enter a template name', 'error');
+        return;
+    }
 
     codeTemplates.push({
         name,
@@ -1612,6 +1987,11 @@ function saveTemplate() {
     });
 
     localStorage.setItem('codeTemplates', JSON.stringify(codeTemplates));
+
+    // Clear the input and update the list
+    if (nameInput) nameInput.value = '';
+    renderTemplates();
+
     showToast('Template saved!', 'success');
 }
 
@@ -1627,11 +2007,11 @@ let currentMode = 'normal';
 let timerInterval = null;
 let timeRemaining = 0;
 
-function setMode(mode) {
+function setMode(mode, event) {
     currentMode = mode;
 
     document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    if (event && event.target) event.target.classList.add('active');
 
     if (mode === 'timed') {
         showToast('Timed mode enabled! 10 minutes per challenge', 'info');
@@ -1764,7 +2144,50 @@ let queueStartTime = null;
 let queueTimer = null;
 let currentBattle = null;
 let battlePollInterval = null;
+let battleTimerInterval = null;
 let battleEditor = null;
+
+// Clean up battle state on page load - prevents stale matchmaking
+async function cleanupBattleStateOnLoad() {
+    // Clear any lingering intervals from previous sessions
+    if (queueTimer) clearInterval(queueTimer);
+    if (battlePollInterval) clearInterval(battlePollInterval);
+    if (battleTimerInterval) clearInterval(battleTimerInterval);
+
+    queueTimer = null;
+    battlePollInterval = null;
+    battleTimerInterval = null;
+    battleState = 'idle';
+    currentBattle = null;
+    queueStartTime = null;
+
+    // If user has a token, clean up their queue entry on the server
+    const savedToken = localStorage.getItem('token');
+    if (savedToken) {
+        try {
+            await fetch('/api/battles/queue', {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${savedToken}` }
+            });
+            console.log('Battle queue cleaned up on page load');
+        } catch (err) {
+            // Not critical, just log it
+            console.log('Queue cleanup on load:', err.message);
+        }
+    }
+}
+
+function initBattleDifficulty() {
+    const diffButtons = document.querySelectorAll('.diff-btn');
+    diffButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            diffButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            battleDifficulty = btn.dataset.diff || 'easy';
+            console.log('Battle difficulty set to:', battleDifficulty);
+        });
+    });
+}
 
 async function joinBattleQueue() {
     if (!token) {
@@ -1892,17 +2315,35 @@ async function startBattle(battle) {
     }
 
     // Set opponent info
-    const opponent = battle.player1_id === currentUser?.id ? battle.player2 : battle.player1;
-    if (opponent) {
-        player2Avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(opponent.username || 'Opponent')}&background=ef4444&color=fff`;
-        player2Name.textContent = opponent.username || 'Opponent';
+    const userId = String(currentUser?.id || currentUser?._id || '').toLowerCase().trim();
+    const p1Id = String(battle.player1_id || '').toLowerCase().trim();
+    const p2Id = String(battle.player2_id || '').toLowerCase().trim();
+
+    let opponent = null;
+    if (userId === p1Id) {
+        opponent = battle.player2;
+    } else if (userId === p2Id) {
+        opponent = battle.player1;
+    }
+
+    if (opponent && (opponent.username || opponent.name)) {
+        const name = opponent.username || opponent.name;
+        player2Avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=ef4444&color=fff`;
+        player2Name.textContent = name;
     } else {
         player2Avatar.src = `https://ui-avatars.com/api/?name=Opponent&background=ef4444&color=fff`;
         player2Name.textContent = 'Opponent';
     }
 
-    // Set battle problem
-    const challenge = battle.challenges || battle;
+    // Set battle problem - handle cases where challenges might be an array or object
+    let challenge = battle.challenges;
+    if (Array.isArray(challenge) && challenge.length > 0) {
+        challenge = challenge[0];
+    } else if (!challenge || Object.keys(challenge).length === 0) {
+        // Fallback for direct challenge_id if joins failed
+        challenge = battle;
+    }
+
     document.getElementById('battle-problem-title').textContent = challenge.title || 'Coding Challenge';
     document.getElementById('battle-problem-desc').textContent = challenge.description || 'Solve this challenge before your opponent!';
 
@@ -1927,17 +2368,20 @@ async function startBattle(battle) {
         battleEditor.setValue('// Write your solution here\n');
     }
 
-    // Start battle timer
-    const startTime = new Date(battle.started_at || Date.now()).getTime();
-    updateBattleTimer(startTime);
+    // Start battle timer - ALWAYS start at 0 (use current time as baseline)
+    // This avoids timezone issues with database timestamps
+    const startTime = Date.now();
+    startBattleTimer(startTime);
 
     // Poll for battle updates (opponent submission)
     pollBattleStatus(battle.id);
 }
 
-function updateBattleTimer(startTime) {
+function startBattleTimer(startTime) {
     const timerEl = document.getElementById('battle-timer');
-    setInterval(() => {
+    if (battleTimerInterval) clearInterval(battleTimerInterval);
+
+    battleTimerInterval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         const mins = Math.floor(elapsed / 60);
         const secs = elapsed % 60;
@@ -1948,18 +2392,38 @@ function updateBattleTimer(startTime) {
 }
 
 function pollBattleStatus(battleId) {
-    const pollInterval = setInterval(async () => {
+    if (battlePollInterval) clearInterval(battlePollInterval);
+    battlePollInterval = setInterval(async () => {
         try {
             const response = await fetch('/api/battles/active', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const battle = await response.json();
 
-            if (!battle || battle.status === 'completed') {
-                clearInterval(pollInterval);
-                if (battle) {
-                    endBattle(battle);
+            // If no active battle returned, the battle has ended
+            if (!battle || battle === null) {
+                console.log('No active battle found - battle may have ended');
+                clearInterval(battlePollInterval);
+                // Try to fetch the completed battle info
+                const historyResponse = await fetch('/api/battles/history', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const history = await historyResponse.json();
+                const completedBattle = history?.find(b => String(b.id) === String(battleId));
+                if (completedBattle) {
+                    endBattle(completedBattle);
+                } else {
+                    // Force return to queue if we can't find the battle
+                    showBattleQueue();
+                    showToast('Battle ended', 'info');
                 }
+                return;
+            }
+
+            // If this is a different battle or completed, end it
+            if (battle.status === 'completed' || String(battle.id) !== String(battleId)) {
+                clearInterval(battlePollInterval);
+                endBattle(battle);
             }
         } catch (err) {
             console.error('Battle poll error:', err);
@@ -1988,16 +2452,16 @@ async function submitBattleSolution() {
         const result = await response.json();
 
         if (result.status === 'success') {
-            if (result.battleComplete) {
+            if (result.battleComplete || result.won) {
                 if (result.won) {
-                    showToast('🏆 You won the battle!', 'success');
+                    showToast('🏆 YOU WON THE BATTLE! +50 XP', 'success');
                     triggerConfetti();
                 } else {
-                    showToast('Battle complete! Better luck next time!', 'info');
+                    showToast('Battle complete!', 'info');
                 }
                 endBattle(result);
             } else {
-                showToast(`Solution accepted in ${result.time}s! Waiting for opponent...`, 'success');
+                showToast(`Solution accepted! Waiting for completion...`, 'success');
             }
         } else {
             showToast('Tests failed. Try again!', 'error');
@@ -2023,17 +2487,42 @@ function setBattleEditorMode(language) {
 }
 
 function endBattle(result) {
+    if (!result) return;
+
+    // Clear all battle intervals immediately
+    if (battlePollInterval) clearInterval(battlePollInterval);
+    if (battleTimerInterval) clearInterval(battleTimerInterval);
+
     battleState = 'idle';
     currentBattle = null;
 
-    // Clear any intervals
-    if (battlePollInterval) clearInterval(battlePollInterval);
+    const currentUserId = String(currentUser?.id || '').trim();
+    const winnerId = String(result.winner_id || '').trim();
+    const isWinner = winnerId === currentUserId;
 
-    // Show results modal or return to queue
+    if (isWinner) {
+        const xpMessage = result.xpAwarded ? `+${result.xpAwarded} XP` : '+50 XP';
+        showToast(`🏆 YOU WON THE BATTLE! ${xpMessage}`, 'success');
+        triggerConfetti();
+    } else {
+        const p1Id = String(result.player1_id || '').trim();
+        const winnerName = (winnerId === p1Id) ?
+            (result.player1?.username || 'Opponent') :
+            (result.player2?.username || 'Opponent');
+        showToast(`Battle Over! ${winnerName} won.`, 'info');
+    }
+
+    // Sync user state to reflect new XP and stats immediately
+    checkAuthState().then(() => {
+        // Also refresh leaderboard as XP changed
+        if (typeof fetchLeaderboard === 'function') fetchLeaderboard();
+    }).catch(err => console.error('Sync error:', err));
+
+    // Reset UI to main state instantly after results toast
     setTimeout(() => {
         showBattleQueue();
         loadBattleHistory();
-    }, 3000);
+    }, 4000);
 }
 
 async function loadBattleHistory() {
@@ -2054,13 +2543,18 @@ async function loadBattleHistory() {
         }
 
         container.innerHTML = battles.map(b => {
-            const won = b.winner_id === currentUser?.id;
-            const opponentName = b.player1_id === currentUser?.id ?
-                (b.player2?.username || 'Opponent') :
-                (b.player1?.username || 'Opponent');
+            const currentUserId = String(currentUser?.id || currentUser?._id || '').toLowerCase().trim();
+            const winnerId = String(b.winner_id || '').toLowerCase().trim();
+            const won = winnerId === currentUserId;
+
+            const p1Id = String(b.player1_id || '').toLowerCase().trim();
+            const opponentObj = (p1Id === currentUserId) ? b.player2 : b.player1;
+            const opponentName = opponentObj?.username || opponentObj?.name || 'Opponent';
             return `
                 <div class="battle-history-item ${won ? 'won' : 'lost'}">
-                    <div class="battle-result-icon">${won ? '🏆' : '❌'}</div>
+                    <div class="battle-result-icon">
+                        ${won ? '<i class="fa-solid fa-trophy" style="color: var(--warning);"></i>' : '<i class="fa-solid fa-xmark" style="color: var(--error);"></i>'}
+                    </div>
                     <div class="battle-info">
                         <span class="battle-opponent">vs ${opponentName}</span>
                         <span class="battle-challenge">${b.challenges?.title || 'Challenge'}</span>
@@ -2077,17 +2571,17 @@ async function loadBattleHistory() {
 // Settings
 let userSettings = JSON.parse(localStorage.getItem('userSettings') || '{}');
 
-function openSettingsTab(tabName) {
+function openSettingsTab(tabName, event) {
     document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
 
-    event.target.classList.add('active');
+    if (event && event.target) event.target.classList.add('active');
     document.getElementById(`${tabName}-settings`).classList.add('active');
 }
 
-function setTheme(theme) {
+function setTheme(theme, event) {
     document.querySelectorAll('.theme-option').forEach(t => t.classList.remove('active'));
-    event.target.closest('.theme-option').classList.add('active');
+    if (event && event.target) event.target.closest('.theme-option')?.classList.add('active');
 
     userSettings.theme = theme;
     localStorage.setItem('userSettings', JSON.stringify(userSettings));

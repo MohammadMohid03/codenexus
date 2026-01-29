@@ -598,10 +598,13 @@ app.post('/api/auth/signup', async (req, res) => {
             message: 'User created successfully',
             token,
             user: {
+                id: newUser.id,
                 username: newUser.username,
                 email: newUser.email,
                 level: newUser.level,
-                xp: newUser.xp
+                xp: newUser.xp,
+                solvedChallenges: newUser.solved_challenges || [],
+                created_at: newUser.created_at
             }
         });
     } catch (err) {
@@ -634,11 +637,13 @@ app.post('/api/auth/login', async (req, res) => {
         res.json({
             token,
             user: {
+                id: user.id,
                 username: user.username,
                 email: user.email,
                 level: user.level,
                 xp: user.xp,
-                solvedChallenges: user.solved_challenges
+                solvedChallenges: user.solved_challenges || [],
+                created_at: user.created_at
             }
         });
     } catch (err) {
@@ -673,13 +678,13 @@ app.get('/api/auth/profile', authenticate, async (req, res) => {
 
         // Map to expected format
         res.json({
-            _id: user.id,
+            id: user.id,
             username: user.username,
             email: user.email,
             level: user.level,
             xp: user.xp,
-            solvedChallenges: user.solved_challenges,
-            joinedAt: user.created_at
+            solvedChallenges: user.solved_challenges || [],
+            created_at: user.created_at
         });
     } catch (err) {
         res.status(500).json({ error: 'Error fetching profile' });
@@ -1039,45 +1044,216 @@ app.get('/api/streak/:userId', async (req, res) => {
 });
 
 // ============================================
-// BATTLE MODE ROUTES
+// BATTLE MODE ROUTES - FIXED MATCHMAKING SYSTEM
 // ============================================
 
-// Join battle queue
+// Queue expiration time in milliseconds (2 minutes)
+const QUEUE_EXPIRATION_MS = 2 * 60 * 1000;
+
+// Battle expiration time (30 minutes) - battles older than this are stale
+const BATTLE_EXPIRATION_MS = 30 * 60 * 1000;
+
+// Clean up expired queue entries
+async function cleanExpiredQueueEntries() {
+    const expirationTime = new Date(Date.now() - QUEUE_EXPIRATION_MS).toISOString();
+    try {
+        await supabase
+            .from('battle_queue')
+            .delete()
+            .lt('joined_at', expirationTime);
+    } catch (err) {
+        console.error('Error cleaning expired queue entries:', err);
+    }
+}
+
+// Clean up stale "active" battles that are older than 30 minutes
+// These are zombie battles from previous sessions that were never completed
+async function cleanStaleBattles() {
+    const expirationTime = new Date(Date.now() - BATTLE_EXPIRATION_MS).toISOString();
+    try {
+        const { data: staleBattles, error: fetchError } = await supabase
+            .from('battles')
+            .select('id, started_at')
+            .eq('status', 'active')
+            .lt('started_at', expirationTime);
+
+        if (staleBattles && staleBattles.length > 0) {
+            console.log(`Found ${staleBattles.length} stale active battles, marking as expired...`);
+
+            // Update stale battles to 'expired' status
+            const { error: updateError } = await supabase
+                .from('battles')
+                .update({
+                    status: 'expired',
+                    ended_at: new Date().toISOString()
+                })
+                .eq('status', 'active')
+                .lt('started_at', expirationTime);
+
+            if (updateError) {
+                console.error('Error updating stale battles:', updateError);
+            } else {
+                console.log(`Cleaned up ${staleBattles.length} stale battles`);
+            }
+        }
+    } catch (err) {
+        console.error('Error cleaning stale battles:', err);
+    }
+}
+
+// Run cleanup on server startup
+cleanStaleBattles();
+cleanExpiredQueueEntries();
+
+// Also run cleanup periodically (every 5 minutes)
+setInterval(() => {
+    cleanStaleBattles();
+    cleanExpiredQueueEntries();
+}, 5 * 60 * 1000);
+
+// Manual cleanup endpoint - call this to force cleanup of all stale data
+app.post('/api/battles/cleanup', async (req, res) => {
+    try {
+        console.log('Manual battle cleanup triggered...');
+
+        // Clean ALL active battles (mark as expired)
+        const { data: allActiveBattles } = await supabase
+            .from('battles')
+            .select('id')
+            .eq('status', 'active');
+
+        if (allActiveBattles && allActiveBattles.length > 0) {
+            await supabase
+                .from('battles')
+                .update({
+                    status: 'expired',
+                    ended_at: new Date().toISOString()
+                })
+                .eq('status', 'active');
+            console.log(`Cleaned ${allActiveBattles.length} active battles`);
+        }
+
+        // Clean all queue entries
+        const { data: allQueueEntries } = await supabase
+            .from('battle_queue')
+            .select('id');
+
+        if (allQueueEntries && allQueueEntries.length > 0) {
+            await supabase.from('battle_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            console.log(`Cleaned ${allQueueEntries.length} queue entries`);
+        }
+
+        res.json({
+            status: 'cleaned',
+            battlesExpired: allActiveBattles?.length || 0,
+            queueEntriesRemoved: allQueueEntries?.length || 0
+        });
+    } catch (err) {
+        console.error('Manual cleanup error:', err);
+        res.status(500).json({ error: 'Cleanup failed' });
+    }
+});
+
+// Join battle queue - EXPLICIT OPT-IN REQUIRED
 app.post('/api/battles/queue', authenticate, async (req, res) => {
     try {
         const { difficulty } = req.body;
 
-        // Check if already in queue
-        const { data: existing } = await supabase
-            .from('battle_queue')
-            .select('*')
-            .eq('user_id', req.userId)
-            .single();
-
-        if (existing) {
-            return res.json({ status: 'already_queued', message: 'Already in queue' });
+        // Validate difficulty parameter
+        const validDifficulties = ['easy', 'medium', 'hard'];
+        if (!difficulty || !validDifficulties.includes(difficulty.toLowerCase())) {
+            return res.status(400).json({
+                error: 'Invalid difficulty. Must be easy, medium, or hard.'
+            });
         }
 
-        // Check for opponent in queue
+        const normalizedDifficulty = difficulty.toLowerCase();
+
+        // First, clean up any expired queue entries
+        await cleanExpiredQueueEntries();
+
+        // Remove any existing queue entry for this user (fresh start)
+        await supabase
+            .from('battle_queue')
+            .delete()
+            .eq('user_id', req.userId);
+
+        // Check if user is already in an ACTIVE battle
+        const { data: activeBattle } = await supabase
+            .from('battles')
+            .select('id')
+            .or(`player1_id.eq.${req.userId},player2_id.eq.${req.userId}`)
+            .eq('status', 'active')
+            .single();
+
+        if (activeBattle) {
+            return res.status(400).json({
+                error: 'You are already in an active battle',
+                battleId: activeBattle.id
+            });
+        }
+
+        // Look for an opponent with EXACT SAME DIFFICULTY who is actively searching
         const { data: opponent } = await supabase
             .from('battle_queue')
             .select('*')
-            .eq('difficulty', difficulty)
+            .eq('difficulty', normalizedDifficulty)
             .neq('user_id', req.userId)
+            .gte('joined_at', new Date(Date.now() - QUEUE_EXPIRATION_MS).toISOString())
             .order('joined_at', { ascending: true })
             .limit(1)
             .single();
 
         if (opponent) {
-            // Match found! Create battle
-            const { data: challenges } = await supabase
-                .from('challenges')
+            // MATCH FOUND with SAME DIFFICULTY!
+            // Double-check opponent is not already in an active battle
+            const { data: opponentBattle } = await supabase
+                .from('battles')
                 .select('id')
-                .eq('difficulty', difficulty.charAt(0).toUpperCase() + difficulty.slice(1));
+                .or(`player1_id.eq.${opponent.user_id},player2_id.eq.${opponent.user_id}`)
+                .eq('status', 'active')
+                .single();
 
+            if (opponentBattle) {
+                // Opponent is somehow already in a battle, remove them from queue
+                await supabase.from('battle_queue').delete().eq('id', opponent.id);
+
+                // Add current user to queue instead
+                await supabase.from('battle_queue').insert({
+                    user_id: req.userId,
+                    difficulty: normalizedDifficulty,
+                    joined_at: new Date().toISOString()
+                });
+
+                return res.json({
+                    status: 'queued',
+                    message: 'Waiting for opponent...',
+                    difficulty: normalizedDifficulty
+                });
+            }
+
+            // Get a random challenge matching the difficulty (Case-Insensitive match)
+            const { data: challenges, error: challengesError } = await supabase
+                .from('challenges')
+                .select('*')
+                .ilike('difficulty', normalizedDifficulty);
+
+            if (challengesError) {
+                console.error(`Error fetching challenges for difficulty "${normalizedDifficulty}":`, challengesError);
+                return res.status(500).json({ error: 'Failed to fetch challenges' });
+            }
+
+            if (!challenges || challenges.length === 0) {
+                console.error(`CRITICAL: No challenges found in database for difficulty: "${normalizedDifficulty}"`);
+                return res.status(500).json({ error: `No challenges available for "${normalizedDifficulty}" difficulty. Please contact admin to seed challenges.` });
+            }
+
+            console.log(`Found ${challenges.length} challenges for difficulty "${normalizedDifficulty}". Selecting one...`);
             const randomChallenge = challenges[Math.floor(Math.random() * challenges.length)];
+            console.log(`Selected random challenge: "${randomChallenge.title}" (ID: ${randomChallenge.id})`);
 
-            const { data: battle, error } = await supabase
+            // Create the battle (difficulty is tracked via challenge_id, not a separate column)
+            const { data: battle, error: battleError } = await supabase
                 .from('battles')
                 .insert({
                     player1_id: opponent.user_id,
@@ -1089,18 +1265,49 @@ app.post('/api/battles/queue', authenticate, async (req, res) => {
                 .select()
                 .single();
 
-            // Remove opponent from queue
+            if (battleError) {
+                console.error('Battle creation error:', battleError);
+                return res.status(500).json({ error: 'Failed to create battle' });
+            }
+
+            // Remove opponent from queue (they got matched)
             await supabase.from('battle_queue').delete().eq('id', opponent.id);
 
-            res.json({ status: 'matched', battle });
+            // Fetch the full battle data with player info and challenge
+            const { data: fullBattle } = await supabase
+                .from('battles')
+                .select('*, challenges(*), player1:users!player1_id(id, username), player2:users!player2_id(id, username)')
+                .eq('id', battle.id)
+                .single();
+
+            console.log(`Match created: ${req.userId} vs ${opponent.user_id} on difficulty: ${normalizedDifficulty}`);
+
+            res.json({
+                status: 'matched',
+                battle: fullBattle,
+                difficulty: normalizedDifficulty
+            });
         } else {
-            // Add to queue
-            await supabase.from('battle_queue').insert({
+            // No match found, add to queue with timestamp
+            const { error: queueError } = await supabase.from('battle_queue').insert({
                 user_id: req.userId,
-                difficulty
+                difficulty: normalizedDifficulty,
+                joined_at: new Date().toISOString()
             });
 
-            res.json({ status: 'queued', message: 'Waiting for opponent...' });
+            if (queueError) {
+                console.error('Queue insert error:', queueError);
+                return res.status(500).json({ error: 'Failed to join queue' });
+            }
+
+            console.log(`User ${req.userId} joined queue for difficulty: ${normalizedDifficulty}`);
+
+            res.json({
+                status: 'queued',
+                message: 'Waiting for opponent...',
+                difficulty: normalizedDifficulty,
+                expiresIn: QUEUE_EXPIRATION_MS
+            });
         }
     } catch (err) {
         console.error('Battle queue error:', err);
@@ -1108,29 +1315,70 @@ app.post('/api/battles/queue', authenticate, async (req, res) => {
     }
 });
 
-// Leave battle queue
+// Leave battle queue - EXPLICIT OPT-OUT
 app.delete('/api/battles/queue', authenticate, async (req, res) => {
     try {
         await supabase.from('battle_queue').delete().eq('user_id', req.userId);
+        console.log(`User ${req.userId} left the battle queue`);
         res.json({ status: 'left_queue' });
     } catch (err) {
         res.status(500).json({ error: 'Failed to leave queue' });
     }
 });
 
-// Get active battle
-app.get('/api/battles/active', authenticate, async (req, res) => {
+// Check queue status
+app.get('/api/battles/queue/status', authenticate, async (req, res) => {
     try {
-        const { data: battle } = await supabase
-            .from('battles')
-            .select('*, challenges(*)')
-            .or(`player1_id.eq.${req.userId},player2_id.eq.${req.userId}`)
-            .eq('status', 'active')
+        // Clean expired entries first
+        await cleanExpiredQueueEntries();
+
+        const { data: queueEntry } = await supabase
+            .from('battle_queue')
+            .select('*')
+            .eq('user_id', req.userId)
             .single();
 
+        if (queueEntry) {
+            const timeInQueue = Date.now() - new Date(queueEntry.joined_at).getTime();
+            res.json({
+                inQueue: true,
+                difficulty: queueEntry.difficulty,
+                timeInQueue: Math.floor(timeInQueue / 1000),
+                expiresIn: Math.max(0, QUEUE_EXPIRATION_MS - timeInQueue)
+            });
+        } else {
+            res.json({ inQueue: false });
+        }
+    } catch (err) {
+        res.json({ inQueue: false });
+    }
+});
+
+// Get active battle - ONLY RETURNS TRULY ACTIVE BATTLES
+app.get('/api/battles/active', authenticate, async (req, res) => {
+    try {
+        // Clean expired queue entries only (NOT stale battles during active poll)
+        await cleanExpiredQueueEntries();
+
+        // Get only battles with status 'active' for this user
+        const { data: battle, error } = await supabase
+            .from('battles')
+            .select('*, challenges(*), player1:users!player1_id(id, username), player2:users!player2_id(id, username)')
+            .or(`player1_id.eq.${req.userId},player2_id.eq.${req.userId}`)
+            .eq('status', 'active')
+            .order('started_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            console.error('Active battle fetch error:', error);
+        }
+
+        // Return the battle without stale checking (that's done on startup only)
         res.json(battle || null);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch battle' });
+        console.error('Battle active error:', err);
+        res.json(null);
     }
 });
 
@@ -1140,75 +1388,126 @@ app.post('/api/battles/:battleId/submit', authenticate, async (req, res) => {
         const { code, language } = req.body;
         const battleId = req.params.battleId;
 
-        const { data: battle } = await supabase
+        // Get the battle and verify it's active
+        const { data: battle, error: fetchError } = await supabase
             .from('battles')
-            .select('*, challenges(*)')
+            .select('*, challenges(*), player1:users!player1_id(id, username), player2:users!player2_id(id, username)')
             .eq('id', battleId)
             .single();
 
-        if (!battle || battle.status !== 'active') {
-            return res.status(400).json({ error: 'Battle not found or not active' });
+        if (fetchError || !battle) {
+            return res.status(404).json({ error: 'Battle not found' });
         }
 
+        // CRITICAL: Only allow submission for ACTIVE battles
+        if (battle.status !== 'active') {
+            return res.status(400).json({
+                error: 'Battle is not active',
+                status: battle.status
+            });
+        }
+
+        // Verify the user is a participant
         const isPlayer1 = battle.player1_id === req.userId;
+        const isPlayer2 = battle.player2_id === req.userId;
+
+        if (!isPlayer1 && !isPlayer2) {
+            return res.status(403).json({ error: 'You are not a participant in this battle' });
+        }
+
         const challenge = battle.challenges;
 
-        // Run tests
+        // Run tests against the solution
         let allPassed = true;
+        let testResults = [];
+
         for (const testCase of challenge.test_cases) {
-            const result = await executeWithPiston(language, code, testCase.input);
-            const actualOutput = (result.run.stdout || "").trim();
-            if (actualOutput !== testCase.expected.trim()) {
+            try {
+                const result = await executeWithPiston(language, code, testCase.input);
+                const actualOutput = (result.run.stdout || "").trim();
+                const passed = actualOutput === testCase.expected.trim();
+
+                testResults.push({
+                    passed,
+                    expected: testCase.expected,
+                    actual: actualOutput,
+                    hidden: testCase.hidden
+                });
+
+                if (!passed) {
+                    allPassed = false;
+                }
+            } catch (execError) {
                 allPassed = false;
-                break;
+                testResults.push({
+                    passed: false,
+                    error: execError.message,
+                    hidden: testCase.hidden
+                });
             }
         }
 
         if (allPassed) {
+            // User won the battle!
             const timeField = isPlayer1 ? 'player1_time' : 'player2_time';
             const codeField = isPlayer1 ? 'player1_code' : 'player2_code';
             const elapsedTime = Math.floor((Date.now() - new Date(battle.started_at).getTime()) / 1000);
 
-            const updateData = {
-                [timeField]: elapsedTime,
-                [codeField]: code
+            // Award XP based on difficulty
+            const difficultyMultiplier = {
+                'Easy': 50,
+                'Medium': 100,
+                'Hard': 150
             };
+            const xpToAdd = difficultyMultiplier[challenge.difficulty] || 50;
 
-            // Check if other player already finished
-            const otherTimeField = isPlayer1 ? 'player2_time' : 'player1_time';
-            if (battle[otherTimeField]) {
-                // Battle complete
-                const winnerId = elapsedTime < battle[otherTimeField] ? req.userId :
-                    (isPlayer1 ? battle.player2_id : battle.player1_id);
-                updateData.status = 'completed';
-                updateData.winner_id = winnerId;
-                updateData.ended_at = new Date().toISOString();
+            // Update winner's XP
+            const { data: winner } = await supabase
+                .from('users')
+                .select('xp')
+                .eq('id', req.userId)
+                .single();
 
-                // Award XP to winner
-                const { data: winner } = await supabase
+            if (winner) {
+                await supabase
                     .from('users')
-                    .select('xp')
-                    .eq('id', winnerId)
-                    .single();
-
-                if (winner) {
-                    await supabase
-                        .from('users')
-                        .update({ xp: (winner.xp || 0) + 100 })
-                        .eq('id', winnerId);
-                }
+                    .update({ xp: (winner.xp || 0) + xpToAdd })
+                    .eq('id', req.userId);
             }
 
-            await supabase.from('battles').update(updateData).eq('id', battleId);
+            // Update battle to completed status
+            await supabase
+                .from('battles')
+                .update({
+                    [timeField]: elapsedTime,
+                    [codeField]: code,
+                    status: 'completed',
+                    winner_id: req.userId,
+                    ended_at: new Date().toISOString()
+                })
+                .eq('id', battleId);
+
+            console.log(`Battle ${battleId} won by user ${req.userId}`);
 
             res.json({
                 status: 'success',
                 time: elapsedTime,
-                battleComplete: !!updateData.status,
-                won: updateData.winner_id === req.userId
+                battleComplete: true,
+                won: true,
+                winner_id: req.userId,
+                player1_id: battle.player1_id,
+                player2_id: battle.player2_id,
+                player1: battle.player1,
+                player2: battle.player2,
+                xpAwarded: xpToAdd,
+                testResults
             });
         } else {
-            res.json({ status: 'failed', message: 'Tests did not pass' });
+            res.json({
+                status: 'failed',
+                message: 'Tests did not pass. All test cases must pass to win!',
+                testResults
+            });
         }
     } catch (err) {
         console.error('Battle submit error:', err);
@@ -1216,12 +1515,58 @@ app.post('/api/battles/:battleId/submit', authenticate, async (req, res) => {
     }
 });
 
-// Get battle history
+// Forfeit/abandon a battle
+app.post('/api/battles/:battleId/forfeit', authenticate, async (req, res) => {
+    try {
+        const battleId = req.params.battleId;
+
+        const { data: battle } = await supabase
+            .from('battles')
+            .select('*')
+            .eq('id', battleId)
+            .eq('status', 'active')
+            .single();
+
+        if (!battle) {
+            return res.status(404).json({ error: 'Active battle not found' });
+        }
+
+        // Verify user is a participant
+        const isPlayer1 = battle.player1_id === req.userId;
+        const isPlayer2 = battle.player2_id === req.userId;
+
+        if (!isPlayer1 && !isPlayer2) {
+            return res.status(403).json({ error: 'You are not a participant in this battle' });
+        }
+
+        // The other player wins by forfeit
+        const winnerId = isPlayer1 ? battle.player2_id : battle.player1_id;
+
+        await supabase
+            .from('battles')
+            .update({
+                status: 'completed',
+                winner_id: winnerId,
+                ended_at: new Date().toISOString(),
+                forfeit_by: req.userId
+            })
+            .eq('id', battleId);
+
+        console.log(`Battle ${battleId} forfeited by user ${req.userId}`);
+
+        res.json({ status: 'forfeited', winner_id: winnerId });
+    } catch (err) {
+        console.error('Forfeit error:', err);
+        res.status(500).json({ error: 'Failed to forfeit battle' });
+    }
+});
+
+// Get battle history - only completed battles
 app.get('/api/battles/history', authenticate, async (req, res) => {
     try {
         const { data: battles } = await supabase
             .from('battles')
-            .select('*, challenges(title, difficulty)')
+            .select('*, challenges(title, difficulty), player1:users!player1_id(id, username), player2:users!player2_id(id, username)')
             .or(`player1_id.eq.${req.userId},player2_id.eq.${req.userId}`)
             .eq('status', 'completed')
             .order('ended_at', { ascending: false })

@@ -2959,9 +2959,9 @@ select:hover {
 }
 
 .battle-editor-header select {
-    background: var(--surface);
+    background: var(--card-bg);
     border: 1px solid var(--border);
-    color: var(--text);
+    color: var(--text-primary);
     padding: 8px 12px;
     border-radius: 6px;
 }
@@ -2969,9 +2969,9 @@ select:hover {
 #battle-editor {
     width: 100%;
     min-height: 300px;
-    background: var(--surface);
+    background: var(--card-bg);
     border: 1px solid var(--border);
-    color: var(--text);
+    color: var(--text-primary);
     font-family: 'JetBrains Mono', monospace;
     padding: 1rem;
     border-radius: 8px;
@@ -4321,7 +4321,8 @@ select:hover {
     transition: all 0.3s ease;
 }
 
-.keyboard-shortcuts:hover .shortcuts-panel {
+.keyboard-shortcuts:hover .shortcuts-panel,
+.shortcuts-panel.visible {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);

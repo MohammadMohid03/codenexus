@@ -51,12 +51,15 @@
                 <li data-page="leaderboard"><i class="fa-solid fa-medal"></i><span>Leaderboard</span></li>
                 <li data-page="learn"><i class="fa-solid fa-graduation-cap"></i><span>Learn</span></li>
                 <li data-page="social"><i class="fa-solid fa-users"></i><span>Social</span></li>
-                <li data-page="profile" id="nav-profile-link"><i class="fa-solid fa-user-astronaut"></i><span>Profile</span></li>
+                <li data-page="profile" id="nav-profile-link"><i
+                        class="fa-solid fa-user-astronaut"></i><span>Profile</span></li>
             </ul>
 
             <div class="auth-box" id="auth-section">
-                <button class="auth-btn login-btn" onclick="openModal('login-modal')"><i class="fa-solid fa-sign-in-alt"></i><span>Login</span></button>
-                <button class="auth-btn signup-btn" onclick="openModal('signup-modal')"><i class="fa-solid fa-user-plus"></i><span>Sign Up</span></button>
+                <button class="auth-btn login-btn" onclick="openModal('login-modal')"><i
+                        class="fa-solid fa-sign-in-alt"></i><span>Login</span></button>
+                <button class="auth-btn signup-btn" onclick="openModal('signup-modal')"><i
+                        class="fa-solid fa-user-plus"></i><span>Sign Up</span></button>
             </div>
 
             <div class="user-stats hidden" id="sidebar-user-stats">
@@ -79,8 +82,9 @@
                     <i class="fa-solid fa-fire"></i>
                     <span id="streak-count">0 Day Streak</span>
                 </div>
-                <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i><span>Logout</span></button>
-                
+                <button class="logout-btn" onclick="logout()"><i
+                        class="fa-solid fa-sign-out-alt"></i><span>Logout</span></button>
+
                 <!-- Notifications Dropdown -->
                 <div class="notifications-dropdown hidden" id="notifications-dropdown">
                     <div class="notifications-header">
@@ -230,7 +234,8 @@
                 </div>
                 <div class="search-bar">
                     <i class="fa-solid fa-search"></i>
-                    <input type="text" id="challenge-search" placeholder="Search challenges..." oninput="filterChallenges()">
+                    <input type="text" id="challenge-search" placeholder="Search challenges..."
+                        oninput="filterChallenges()">
                 </div>
                 <div class="challenges-stats">
                     <span><i class="fa-solid fa-check-circle"></i> <span id="solved-count">0</span> Solved</span>
@@ -269,12 +274,13 @@
                             <span class="badge" id="problem-difficulty">Easy</span>
                             <span class="badge" id="problem-points">100 XP</span>
                             <span class="badge category-badge" id="problem-category">Arrays</span>
-                            <span class="badge" id="problem-success-rate"><i class="fa-solid fa-chart-simple"></i> 75%</span>
+                            <span class="badge" id="problem-success-rate"><i class="fa-solid fa-chart-simple"></i>
+                                75%</span>
                         </div>
                         <div class="problem-description" id="problem-desc">
                             <!-- Description injected here -->
                         </div>
-                        
+
                         <!-- Enhanced Hints Section -->
                         <div class="hints-section glass-card">
                             <h4><i class="fa-solid fa-lightbulb"></i> Hints</h4>
@@ -317,7 +323,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="code-pane">
                         <div class="editor-header">
                             <select id="language-select">
@@ -349,8 +355,10 @@
                                 <span id="timer-value">00:00</span>
                             </div>
                             <div class="actions">
-                                <button class="run-btn" onclick="runCode()"><i class="fa-solid fa-play"></i> Run</button>
-                                <button class="submit-btn" onclick="submitCode()"><i class="fa-solid fa-check"></i> Submit</button>
+                                <button class="run-btn" onclick="runCode()"><i class="fa-solid fa-play"></i>
+                                    Run</button>
+                                <button class="submit-btn" onclick="submitCode()"><i class="fa-solid fa-check"></i>
+                                    Submit</button>
                             </div>
                         </div>
                         <div id="editor-container"></div>
@@ -425,7 +433,7 @@
                     <h2><i class="fa-solid fa-swords"></i> Battle Arena</h2>
                     <p>Challenge other coders in real-time 1v1 battles!</p>
                 </div>
-                
+
                 <div class="battle-container">
                     <div class="battle-queue-section glass-card" id="battle-queue-section">
                         <div class="battle-icon">
@@ -798,7 +806,8 @@
                                 <div class="skill">
                                     <span class="skill-name" id="profile-xp-progress-text">Next Level: 0/500 XP</span>
                                     <div class="skill-bar">
-                                        <div class="skill-fill animated-progress" id="profile-xp-bar" style="width: 0%"></div>
+                                        <div class="skill-fill animated-progress" id="profile-xp-bar" style="width: 0%">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -835,9 +844,12 @@
                                     </div>
                                 </div>
                                 <div class="chart-legend">
-                                    <div class="legend-item"><span class="dot easy"></span> Easy: <span id="easy-count">0</span></div>
-                                    <div class="legend-item"><span class="dot medium"></span> Medium: <span id="medium-count">0</span></div>
-                                    <div class="legend-item"><span class="dot hard"></span> Hard: <span id="hard-count">0</span></div>
+                                    <div class="legend-item"><span class="dot easy"></span> Easy: <span
+                                            id="easy-count">0</span></div>
+                                    <div class="legend-item"><span class="dot medium"></span> Medium: <span
+                                            id="medium-count">0</span></div>
+                                    <div class="legend-item"><span class="dot hard"></span> Hard: <span
+                                            id="hard-count">0</span></div>
                                 </div>
                             </div>
                             <div class="chart-card glass-card">
@@ -845,17 +857,23 @@
                                 <div class="category-bars" id="category-bars">
                                     <div class="category-bar-item">
                                         <span class="cat-name">Arrays</span>
-                                        <div class="cat-bar"><div class="cat-fill" style="width: 80%"></div></div>
+                                        <div class="cat-bar">
+                                            <div class="cat-fill" style="width: 80%"></div>
+                                        </div>
                                         <span class="cat-count">4/5</span>
                                     </div>
                                     <div class="category-bar-item">
                                         <span class="cat-name">Strings</span>
-                                        <div class="cat-bar"><div class="cat-fill" style="width: 60%"></div></div>
+                                        <div class="cat-bar">
+                                            <div class="cat-fill" style="width: 60%"></div>
+                                        </div>
                                         <span class="cat-count">3/5</span>
                                     </div>
                                     <div class="category-bar-item">
                                         <span class="cat-name">Math</span>
-                                        <div class="cat-bar"><div class="cat-fill" style="width: 40%"></div></div>
+                                        <div class="cat-bar">
+                                            <div class="cat-fill" style="width: 40%"></div>
+                                        </div>
                                         <span class="cat-count">2/5</span>
                                     </div>
                                 </div>
@@ -912,7 +930,8 @@
                             <h3><i class="fa-solid fa-clock-rotate-left"></i> Account Information</h3>
                             <ul class="activity-list">
                                 <li><strong>Joined:</strong> <span id="profile-joined-date">N/A</span></li>
-                                <li><strong>Account Status:</strong> <span class="badge success glow-badge">Active</span></li>
+                                <li><strong>Account Status:</strong> <span
+                                        class="badge success glow-badge">Active</span></li>
                                 <li><strong>Best Streak:</strong> <span id="profile-best-streak">0</span> days</li>
                             </ul>
                         </div>
@@ -1044,7 +1063,7 @@
         <div class="modal-content glass-modal wide-modal">
             <span class="close-btn" onclick="closeModal('settings-modal')">&times;</span>
             <h3><i class="fa-solid fa-gear"></i> Settings</h3>
-            
+
             <div class="settings-tabs">
                 <button class="tab-btn active" data-tab="appearance">Appearance</button>
                 <button class="tab-btn" data-tab="editor">Editor</button>
@@ -1146,22 +1165,28 @@
         </div>
     </div>
 
-    <!-- Code Template Modal -->
+    <!-- Code Template Modal (Combined Save and Load) -->
     <div id="template-modal" class="modal">
         <div class="modal-content glass-modal">
             <span class="close-btn" onclick="closeModal('template-modal')">&times;</span>
-            <h3><i class="fa-solid fa-file-code"></i> Save as Template</h3>
-            <form id="save-template-form">
-                <div class="form-group">
-                    <label>Template Name</label>
-                    <input type="text" id="template-name" required placeholder="My C++ Template">
+            <h3><i class="fa-solid fa-file-code"></i> Code Templates</h3>
+
+            <!-- Saved Templates List -->
+            <div class="templates-list" id="templates-list">
+                <p class="empty-state">No templates saved yet</p>
+            </div>
+
+            <!-- Save New Template Form -->
+            <div class="save-template-section"
+                style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary);">Save Current Code as Template</h4>
+                <div class="form-group" style="margin-bottom: 0.5rem;">
+                    <input type="text" id="template-name" placeholder="Template name..." style="width: 100%;">
                 </div>
-                <div class="form-group toggle">
-                    <label>Set as Default</label>
-                    <input type="checkbox" id="template-default">
-                </div>
-                <button type="submit" class="cta-btn full-width">Save Template</button>
-            </form>
+                <button class="cta-btn small-btn" onclick="saveTemplate()">
+                    <i class="fa-solid fa-save"></i> Save Template
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1250,17 +1275,6 @@
         </div>
     </div>
 
-    <!-- Template Modal -->
-    <div id="template-modal" class="modal">
-        <div class="modal-content glass-modal">
-            <span class="close-btn" onclick="closeModal('template-modal')">&times;</span>
-            <h3><i class="fa-solid fa-file-code"></i> Code Templates</h3>
-            <div class="templates-list" id="templates-list">
-                <p class="empty-state">No templates saved yet</p>
-            </div>
-        </div>
-    </div>
-
     <!-- Keyboard Shortcuts -->
     <div class="keyboard-shortcuts">
         <button class="shortcuts-btn" title="Keyboard Shortcuts">
@@ -1293,21 +1307,6 @@
                 <div class="shortcut-keys">
                     <span class="key">?</span>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Custom Confirmation Modal -->
-    <div id="confirm-modal" class="modal">
-        <div class="modal-content glass-modal confirm-modal-content">
-            <div class="confirm-icon">
-                <i class="fa-solid fa-question"></i>
-            </div>
-            <h3 id="confirm-title">Confirmation</h3>
-            <p id="confirm-message">Are you sure you want to proceed?</p>
-            <div class="confirm-buttons">
-                <button id="confirm-cancel" class="cta-btn secondary">Cancel</button>
-                <button id="confirm-ok" class="cta-btn">Confirm</button>
             </div>
         </div>
     </div>

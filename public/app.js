@@ -10,6 +10,37 @@ let currentFilter = 'all';
 let codeHistory = {};
 let unlockedHints = {};
 
+// LEVELING & RANKING HELPERS
+function calculateLevel(xp) {
+    if (!xp || xp < 500) return 1;
+    const level = Math.floor((-7 + Math.sqrt(81 + 0.08 * xp)) / 2);
+    return Math.max(1, level);
+}
+
+function getCumulativeXpForLevel(level) {
+    if (level < 1) return 0;
+    return 50 * (level * level) + 350 * level - 400;
+}
+
+function getRankName(level) {
+    if (level < 5) return 'Newcomer';
+    if (level < 10) return 'Noob Developer';
+    if (level < 15) return 'Syntax Sourcerer';
+    if (level < 20) return 'Logic Lord';
+    return 'The Architect';
+}
+
+/**
+ * Returns YYYY-MM-DD string in local time to avoid UTC day-shifts
+ */
+function getLocalDateString(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 // DOM Elements
 const pages = document.querySelectorAll('.page');
 const navLinks = document.querySelectorAll('.nav-links li');
@@ -44,6 +75,10 @@ const profileXpBar = document.getElementById('profile-xp-bar');
 const profileXpProgressText = document.getElementById('profile-xp-progress-text');
 const profileJoinedDate = document.getElementById('profile-joined-date');
 const profileImg = document.getElementById('profile-img');
+
+// Social DOM
+const socialLoggedIn = document.getElementById('social-logged-in');
+const socialLoggedOut = document.getElementById('social-logged-out');
 
 // Typing Animation Texts
 const typingTexts = [
@@ -612,10 +647,41 @@ function logout() {
 
     localStorage.removeItem('token');
 
-    // Reset UI
+    // Reset UI Elements that store user data
     if (editor) editor.setValue('');
-    consoleOutput.textContent = 'Output will appear here...';
-    document.getElementById('test-results').innerHTML = '<p class="empty-state">Run or Submit code to see results</p>';
+    if (consoleOutput) consoleOutput.textContent = 'Output will appear here...';
+
+    const testResults = document.getElementById('test-results');
+    if (testResults) testResults.innerHTML = '<p class="empty-state">Run or Submit code to see results</p>';
+
+    // Re-render challenges and leaderboard to remove "solved" status and "you" highlights
+    if (allChallenges && allChallenges.length > 0) {
+        renderChallenges(allChallenges);
+    }
+    fetchLeaderboard(); // Refresh leaderboard data and UI
+
+    // Clear dynamic sections
+    const friendsList = document.getElementById('friends-list');
+    if (friendsList) friendsList.innerHTML = '<p class="empty-state">Add friends to see them here!</p>';
+
+    const requestsList = document.getElementById('requests-list');
+    if (requestsList) requestsList.innerHTML = '';
+
+    const friendRequestsWrapper = document.getElementById('friend-requests');
+    if (friendRequestsWrapper) friendRequestsWrapper.classList.add('hidden');
+
+    const notificationsList = document.getElementById('notifications-list');
+    if (notificationsList) notificationsList.innerHTML = '<p class="empty-state">No notifications</p>';
+
+    // Reset Stats Charts
+    const easyCount = document.getElementById('easy-count');
+    const mediumCount = document.getElementById('medium-count');
+    const hardCount = document.getElementById('hard-count');
+    const totalChart = document.getElementById('total-solved-chart');
+    if (easyCount) easyCount.textContent = '0';
+    if (mediumCount) mediumCount.textContent = '0';
+    if (hardCount) hardCount.textContent = '0';
+    if (totalChart) totalChart.textContent = '0';
 
     showLoggedOutUI();
     navigateTo('home');
@@ -692,6 +758,11 @@ function showLoggedInUI(user) {
 
     updateUserMiniStats(user);
     renderDynamicProfile(user);
+
+    // Social page logic
+    if (socialLoggedIn) socialLoggedIn.classList.remove('hidden');
+    if (socialLoggedOut) socialLoggedOut.classList.add('hidden');
+
     updateAchievements(user);
     updateStatsCharts();
 
@@ -715,13 +786,23 @@ function showLoggedOutUI() {
     sidebarUserStats.classList.add('hidden');
     if (profileLoggedIn) profileLoggedIn.classList.add('hidden');
     if (profileLoggedOut) profileLoggedOut.classList.remove('hidden');
+
+    // Social page logic
+    if (socialLoggedIn) socialLoggedIn.classList.add('hidden');
+    if (socialLoggedOut) socialLoggedOut.classList.remove('hidden');
 }
 
 function updateUserMiniStats(user) {
-    if (sidebarLevel) sidebarLevel.textContent = `Lvl ${user.level}`;
-    const xpInLevel = user.xp % 500;
-    const progress = (xpInLevel / 500) * 100;
-    if (sidebarXpText) sidebarXpText.textContent = `${xpInLevel} / 500 XP`;
+    const level = calculateLevel(user.xp || 0);
+    if (sidebarLevel) sidebarLevel.textContent = `Lvl ${level}`;
+
+    const currentBase = getCumulativeXpForLevel(level);
+    const nextBase = getCumulativeXpForLevel(level + 1);
+    const xpInLevel = (user.xp || 0) - currentBase;
+    const levelRequirement = nextBase - currentBase;
+    const progress = Math.min(100, (xpInLevel / levelRequirement) * 100);
+
+    if (sidebarXpText) sidebarXpText.textContent = `${xpInLevel} / ${levelRequirement} XP`;
     if (sidebarXpFill) sidebarXpFill.style.width = `${progress}%`;
 }
 
@@ -738,13 +819,20 @@ function renderDynamicProfile(user) {
     // Animate counters
     const solvedCount = user.solvedChallenges ? user.solvedChallenges.length : 0;
     animateCounter(profileSolvedCount, solvedCount);
-    animateCounter(profileXp, user.xp);
-    if (profileLevel) profileLevel.textContent = user.level;
+    animateCounter(profileXp, user.xp || 0);
 
-    const xpInLevel = user.xp % 500;
-    const progress = (xpInLevel / 500) * 100;
+    const level = calculateLevel(user.xp || 0);
+    if (profileLevel) profileLevel.textContent = level;
+    if (profileRank) profileRank.textContent = getRankName(level);
+
+    const currentBase = getCumulativeXpForLevel(level);
+    const nextBase = getCumulativeXpForLevel(level + 1);
+    const xpInLevel = (user.xp || 0) - currentBase;
+    const levelRequirement = nextBase - currentBase;
+    const progress = Math.min(100, (xpInLevel / levelRequirement) * 100);
+
     if (profileXpBar) profileXpBar.style.width = `${progress}%`;
-    if (profileXpProgressText) profileXpProgressText.textContent = `Next Level: ${xpInLevel}/500 XP`;
+    if (profileXpProgressText) profileXpProgressText.textContent = `Next Level: ${xpInLevel}/${levelRequirement} XP`;
 
     // Handle joined date - server returns created_at
     const joinDate = user.created_at || user.joinedAt;
@@ -760,11 +848,13 @@ function updateProfileBadges(user) {
     const badgesContainer = document.getElementById('profile-badges');
     if (!badgesContainer) return;
 
+    const level = calculateLevel(user.xp || 0);
     let badges = [];
-    if (user.level >= 1) badges.push({ icon: 'fa-seedling', name: 'Newcomer' });
-    if (user.level >= 5) badges.push({ icon: 'fa-fire', name: 'On Fire' });
-    if (user.level >= 10) badges.push({ icon: 'fa-star', name: 'Rising Star' });
-    if (user.xp >= 1000) badges.push({ icon: 'fa-crown', name: 'XP Master' });
+    if (level >= 1) badges.push({ icon: 'fa-seedling', name: 'Newcomer' });
+    if (level >= 5) badges.push({ icon: 'fa-terminal', name: 'Noob' });
+    if (level >= 10) badges.push({ icon: 'fa-server', name: 'Specialist' });
+    if (level >= 15) badges.push({ icon: 'fa-cube', name: 'Architect' });
+    if (level >= 20) badges.push({ icon: 'fa-crown', name: 'Legend' });
 
     badgesContainer.innerHTML = badges.map(b =>
         `<span class="badge animated-badge"><i class="fa-solid ${b.icon}"></i> ${b.name}</span>`
@@ -987,7 +1077,8 @@ function renderChallenges(challenges) {
     const solvedChallenges = currentUser?.solvedChallenges || [];
 
     challengesList.innerHTML = challenges.map((c, index) => {
-        const isSolved = solvedChallenges.includes(c.id);
+        // Robust check: convert both to string to avoid type mismatch
+        const isSolved = solvedChallenges.some(id => String(id) === String(c.id));
         return `
         <div class="challenge-card ${isSolved ? 'solved' : ''}" onclick="openChallenge(${c.id})" style="animation-delay: ${index * 0.1}s">
             <div class="card-header">
@@ -1094,6 +1185,13 @@ async function runCode() {
 }
 
 async function submitCode() {
+    // Check if user is logged in
+    if (!token) {
+        showToast('Login to submit and earn XP! 🚀', 'error');
+        openModal('login-modal');
+        return;
+    }
+
     // Stop timer if in timed mode
     if (typeof currentMode !== 'undefined' && currentMode === 'timed') {
         if (typeof stopTimer === 'function') stopTimer();
@@ -1123,16 +1221,20 @@ async function executeChallenge(type) {
 
     try {
         const oldLevel = currentUser?.level || 1;
+        const localDate = getLocalDateString(new Date());
 
         const response = await fetch('/api/run', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({
                 code,
                 language,
                 challengeId: currentChallengeId,
-                token: token,
-                type: type
+                type: type,
+                localDate: localDate
             })
         });
 
@@ -1165,7 +1267,20 @@ async function executeChallenge(type) {
             showToast('Challenge completed! 🎉', 'success');
 
             if (token) {
-                await checkAuthState();
+                if (result.user) {
+                    currentUser = result.user;
+
+                    // Instant Manual Update for "Challenges Solved"
+                    const solvedCount = currentUser.solvedChallenges ? currentUser.solvedChallenges.length : 0;
+                    if (profileSolvedCount) profileSolvedCount.textContent = solvedCount;
+
+                    showLoggedInUI(currentUser);
+                    fetchChallenges();
+                    generateHeatMap(); // Refresh heatmap immediately
+                } else {
+                    await checkAuthState();
+                }
+
                 if (currentUser && currentUser.level > oldLevel) {
                     setTimeout(() => showLevelUp(currentUser.level), 1500);
                 }
@@ -1507,41 +1622,8 @@ function loadActivityFeed() {
     console.log('Activity feed loaded');
 }
 
-// Load friends list
-async function loadFriends() {
-    if (!token) return;
-
-    try {
-        const response = await fetch('/api/friends', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) return;
-
-        const friends = await response.json();
-        const list = document.getElementById('friends-list');
-
-        if (list) {
-            if (!friends || friends.length === 0) {
-                list.innerHTML = '<p class="empty-state">Add friends to see them here!</p>';
-                return;
-            }
-
-            list.innerHTML = friends.map(f => `
-                <div class="friend-item">
-                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(f.username)}&background=random" alt="${f.username}">
-                    <div class="friend-info">
-                        <span class="friend-name">${f.username}</span>
-                        <span class="friend-level">Level ${f.level || 1}</span>
-                    </div>
-                    <span class="friend-status ${f.online ? 'online' : ''}"></span>
-                </div>
-            `).join('');
-        }
-    } catch (err) {
-        console.log('Friends not available');
-    }
-}
+// Load friends list - DEPRECATED (using advanced version at end of file)
+// function loadFriends() { ... }
 
 // Purchase hint (alias for unlockHint to match HTML onclick)
 function purchaseHint(hintNumber) {
@@ -2453,10 +2535,7 @@ async function submitBattleSolution() {
 
         if (result.status === 'success') {
             if (result.battleComplete || result.won) {
-                if (result.won) {
-                    showToast('🏆 YOU WON THE BATTLE! +50 XP', 'success');
-                    triggerConfetti();
-                } else {
+                if (!result.won) {
                     showToast('Battle complete!', 'info');
                 }
                 endBattle(result);
@@ -2593,7 +2672,10 @@ function setTheme(theme, event) {
 // Heat Map Generation (Dynamic)
 async function generateHeatMap() {
     const container = document.getElementById('heatmap');
-    if (!container) return;
+    if (!container) {
+        console.log('Heatmap container not found');
+        return;
+    }
 
     container.innerHTML = '';
 
@@ -2605,25 +2687,36 @@ async function generateHeatMap() {
             const response = await fetch('/api/activity/heatmap', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const data = await response.json();
-            if (Array.isArray(data)) {
-                activityData = data.reduce((acc, d) => {
-                    const dateStr = new Date(d.date).toISOString().split('T')[0];
-                    acc[dateStr] = d.count;
-                    return acc;
-                }, {});
+
+            if (!response.ok) {
+                console.error('Heatmap API returned:', response.status);
+            } else {
+                const data = await response.json();
+                console.log('Heatmap data received:', data);
+
+                if (Array.isArray(data) && data.length > 0) {
+                    activityData = data.reduce((acc, d) => {
+                        // Use literal date string from DB to avoid timezone shifts
+                        const dateStr = d.date;
+                        acc[dateStr] = d.count;
+                        return acc;
+                    }, {});
+                    console.log('Processed activity data:', activityData);
+                }
             }
         } catch (err) {
-            console.error('Heatmap error:', err);
+            console.error('Heatmap fetch error:', err);
         }
     }
 
     // Generate 365 days
     const today = new Date();
+    const heatmapFragment = document.createDocumentFragment();
+
     for (let i = 364; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = getLocalDateString(date);
 
         // Get activity level from data or default to 0
         const count = activityData[dateStr] || 0;
@@ -2631,9 +2724,10 @@ async function generateHeatMap() {
 
         const day = document.createElement('div');
         day.className = `heatmap-day l${activity}`;
-        day.title = `${date.toDateString()}: ${count} activities`;
-        container.appendChild(day);
+        day.title = `${date.toLocaleDateString()}: ${count} challenges solved`;
+        heatmapFragment.appendChild(day);
     }
+    container.appendChild(heatmapFragment);
 }
 
 // Update stats charts
@@ -2665,18 +2759,17 @@ function updateStatsCharts() {
     if (hardCount) hardCount.textContent = hard;
     if (totalChart) totalChart.textContent = totalSolved;
 
-    // Update donut chart segments
+    // Update donut chart using CSS variables
     const easyPercent = totalSolved > 0 ? Math.round((easy / totalSolved) * 100) : 0;
     const mediumPercent = totalSolved > 0 ? Math.round((medium / totalSolved) * 100) : 0;
     const hardPercent = totalSolved > 0 ? Math.round((hard / totalSolved) * 100) : 0;
 
-    const easySegment = document.querySelector('.donut-segment.easy');
-    const mediumSegment = document.querySelector('.donut-segment.medium');
-    const hardSegment = document.querySelector('.donut-segment.hard');
-
-    if (easySegment) easySegment.style.setProperty('--value', easyPercent);
-    if (mediumSegment) mediumSegment.style.setProperty('--value', mediumPercent);
-    if (hardSegment) hardSegment.style.setProperty('--value', hardPercent);
+    const difficultyChart = document.getElementById('difficulty-chart');
+    if (difficultyChart) {
+        difficultyChart.style.setProperty('--easy', easyPercent);
+        difficultyChart.style.setProperty('--medium', mediumPercent);
+        difficultyChart.style.setProperty('--hard', hardPercent);
+    }
 
     // Update category progress bars
     updateCategoryBars(solvedChallenges);
@@ -2798,7 +2891,7 @@ async function searchUsers(query) {
                     <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(u.username)}&background=random" alt="${u.username}">
                     <div class="user-result-info">
                         <span class="user-result-name">${u.username}</span>
-                        <span class="user-result-level">Level ${u.level || 1}</span>
+                        <span class="user-result-level">Level ${u.level || 1} · ${u.xp || 0} XP</span>
                     </div>
                     <button onclick="addFriend('${u.id}')" class="btn-add-friend">
                         <i class="fa-solid fa-user-plus"></i> Add
@@ -2810,6 +2903,12 @@ async function searchUsers(query) {
         console.error('Search error:', err);
         showToast('Search failed', 'error');
     }
+}
+
+// Challenge a friend (integration for the friend list button)
+function challengeFriend(friendId) {
+    showToast('Challenge feature coming soon! ⚔️', 'info');
+    // In a real app, this could send a direct battle invite notification
 }
 
 // Add event listener for user search input
@@ -2864,20 +2963,37 @@ async function loadFriends() {
         const response = await fetch('/api/friends', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        const friends = await response.json();
+        const friendships = await response.json();
 
         const container = document.getElementById('friends-list');
         if (container) {
-            container.innerHTML = friends.map(f => `
-                <div class="friend-item">
-                    <img src="https://ui-avatars.com/api/?name=${f.username}&background=random" alt="${f.username}">
-                    <div class="friend-info">
-                        <span class="friend-name">${f.username}</span>
-                        <span class="friend-level">Level ${f.level} · ${f.xp} XP</span>
-                    </div>
-                    <span class="friend-status ${f.online ? 'online' : 'offline'}"></span>
-                </div>
-            `).join('') || '<p class="empty-state">No friends yet. Search to add some!</p>';
+            if (!friendships || friendships.length === 0) {
+                container.innerHTML = '<p class="empty-state">No friends yet. Search to add some!</p>';
+            } else {
+                container.innerHTML = friendships.map(f => {
+                    const friend = f.friend || {};
+                    // Use last_active to determine online status (if within last 5 minutes)
+                    const isOnline = friend.last_active ? (new Date() - new Date(friend.last_active) < 300000) : false;
+
+                    return `
+                        <div class="friend-item">
+                            <div class="friend-avatar-container">
+                                <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(friend.username || 'User')}&background=random" alt="${friend.username}">
+                                <span class="friend-status ${isOnline ? 'online' : 'offline'}" title="${isOnline ? 'Online' : 'Offline'}"></span>
+                            </div>
+                            <div class="friend-info">
+                                <span class="friend-name">${friend.username || 'Unknown User'}</span>
+                                <span class="friend-stats">Level ${friend.level || 1} · ${friend.xp || 0} XP</span>
+                            </div>
+                            <div class="friend-actions">
+                                <button class="friend-action-btn" title="Challenge" onclick="challengeFriend('${friend.id}')">
+                                    <i class="fa-solid fa-swords"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
 
         // Load friend requests
@@ -2894,19 +3010,38 @@ async function loadFriendRequests() {
         });
         const requests = await response.json();
 
-        const container = document.getElementById('friend-requests');
-        if (container && requests.length > 0) {
-            container.innerHTML = `
-                <h4>Friend Requests (${requests.length})</h4>
-                ${requests.map(r => `
-                    <div class="friend-request">
-                        <img src="https://ui-avatars.com/api/?name=${r.username}&background=random">
-                        <span>${r.username}</span>
-                        <button onclick="acceptFriendRequest('${r.id}')" class="btn-accept">Accept</button>
-                        <button onclick="rejectFriendRequest('${r.id}')" class="btn-reject">Reject</button>
-                    </div>
-                `).join('')}
-            `;
+        const container = document.getElementById('requests-list'); // Fixed selector to match index.html
+        const wrapper = document.getElementById('friend-requests');
+
+        if (container) {
+            if (!requests || requests.length === 0) {
+                if (wrapper) wrapper.classList.add('hidden');
+                container.innerHTML = '';
+            } else {
+                if (wrapper) wrapper.classList.remove('hidden');
+                container.innerHTML = requests.map(r => {
+                    const requester = r.user || {};
+                    return `
+                        <div class="friend-request-item">
+                            <div class="requester-info">
+                                <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(requester.username || 'User')}&background=random">
+                                <div class="requester-details">
+                                    <span class="requester-name">${requester.username || 'Unknown'}</span>
+                                    <span class="requester-level">Lvl ${requester.level || 1}</span>
+                                </div>
+                            </div>
+                            <div class="request-actions">
+                                <button onclick="acceptFriendRequest('${r.id}')" class="btn-accept" title="Accept">
+                                    <i class="fa-solid fa-check"></i>
+                                </button>
+                                <button onclick="rejectFriendRequest('${r.id}')" class="btn-reject" title="Reject">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
     } catch (err) {
         console.error('Load requests error:', err);
@@ -3467,5 +3602,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 500);
 });
-
-

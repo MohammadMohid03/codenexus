@@ -677,64 +677,77 @@
                     <p>Connect with other coders</p>
                 </div>
 
-                <div class="social-container">
-                    <!-- Friends Section -->
-                    <div class="friends-section glass-card">
-                        <div class="section-header">
-                            <h3><i class="fa-solid fa-user-group"></i> Friends</h3>
-                            <button class="small-btn" onclick="openModal('add-friend-modal')">
-                                <i class="fa-solid fa-plus"></i> Add Friend
-                            </button>
-                        </div>
-                        <div class="search-bar">
-                            <i class="fa-solid fa-search"></i>
-                            <input type="text" id="friend-search" placeholder="Search users...">
-                        </div>
-                        <div class="friends-list" id="friends-list">
-                            <p class="empty-state">Add friends to see them here!</p>
-                        </div>
-                        <div class="friend-requests" id="friend-requests">
-                            <h4>Friend Requests</h4>
-                            <div id="requests-list"></div>
-                        </div>
-                    </div>
-
-                    <!-- Teams Section -->
-                    <div class="teams-section glass-card">
-                        <div class="section-header">
-                            <h3><i class="fa-solid fa-people-group"></i> Teams</h3>
-                            <button class="small-btn" onclick="openModal('create-team-modal')">
-                                <i class="fa-solid fa-plus"></i> Create Team
-                            </button>
-                        </div>
-                        <div class="my-team" id="my-team">
-                            <p class="empty-state">You're not in a team yet</p>
-                        </div>
-                        <div class="team-leaderboard">
-                            <h4>Top Teams</h4>
-                            <div id="teams-list"></div>
-                        </div>
-                    </div>
-
-                    <!-- Activity Feed -->
-                    <div class="social-feed glass-card">
-                        <h3><i class="fa-solid fa-rss"></i> Activity Feed</h3>
-                        <div id="activity-feed">
-                            <div class="activity-item">
-                                <img src="https://ui-avatars.com/api/?name=John&background=random" alt="">
-                                <div class="activity-content">
-                                    <p><strong>John</strong> solved <span class="highlight">Two Sum</span></p>
-                                    <span class="activity-time">2 minutes ago</span>
-                                </div>
+                <div id="social-logged-in" class="hidden">
+                    <div class="social-container">
+                        <!-- Friends Section -->
+                        <div class="friends-section glass-card">
+                            <div class="section-header">
+                                <h3><i class="fa-solid fa-user-group"></i> Friends</h3>
+                                <button class="small-btn" onclick="openModal('add-friend-modal')">
+                                    <i class="fa-solid fa-plus"></i> Add Friend
+                                </button>
                             </div>
-                            <div class="activity-item">
-                                <img src="https://ui-avatars.com/api/?name=Sarah&background=random" alt="">
-                                <div class="activity-content">
-                                    <p><strong>Sarah</strong> reached <span class="highlight">Level 10</span></p>
-                                    <span class="activity-time">15 minutes ago</span>
-                                </div>
+                            <div class="search-bar">
+                                <i class="fa-solid fa-search"></i>
+                                <input type="text" id="friend-search" placeholder="Search users...">
+                            </div>
+                            <div class="friends-list" id="friends-list">
+                                <p class="empty-state">Add friends to see them here!</p>
+                            </div>
+                            <div class="friend-requests" id="friend-requests">
+                                <h4>Friend Requests</h4>
+                                <div id="requests-list"></div>
                             </div>
                         </div>
+
+                        <!-- Teams Section -->
+                        <div class="teams-section glass-card">
+                            <div class="section-header">
+                                <h3><i class="fa-solid fa-people-group"></i> Teams</h3>
+                                <button class="small-btn" onclick="openModal('create-team-modal')">
+                                    <i class="fa-solid fa-plus"></i> Create Team
+                                </button>
+                            </div>
+                            <div class="my-team" id="my-team">
+                                <p class="empty-state">You're not in a team yet</p>
+                            </div>
+                            <div class="team-leaderboard">
+                                <h4>Top Teams</h4>
+                                <div id="teams-list"></div>
+                            </div>
+                        </div>
+
+                        <!-- Activity Feed -->
+                        <div class="social-feed glass-card">
+                            <h3><i class="fa-solid fa-rss"></i> Activity Feed</h3>
+                            <div id="activity-feed">
+                                <div class="activity-item">
+                                    <img src="https://ui-avatars.com/api/?name=John&background=random" alt="">
+                                    <div class="activity-content">
+                                        <p><strong>John</strong> solved <span class="highlight">Two Sum</span></p>
+                                        <span class="activity-time">2 minutes ago</span>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <img src="https://ui-avatars.com/api/?name=Sarah&background=random" alt="">
+                                    <div class="activity-content">
+                                        <p><strong>Sarah</strong> reached <span class="highlight">Level 10</span></p>
+                                        <span class="activity-time">15 minutes ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="social-logged-out" class="logged-out-state">
+                    <div class="lock-animation">
+                        <i class="fa-solid fa-user-secret"></i>
+                    </div>
+                    <h2>The Shadow Network</h2>
+                    <p>Unlock the social features to challenge friends and join the top teams.</p>
+                    <div class="auth-options">
+                        <button class="cta-btn pulse-btn" onclick="openModal('signup-modal')">Join Now</button>
                     </div>
                 </div>
             </section>

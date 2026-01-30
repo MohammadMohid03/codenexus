@@ -29,6 +29,32 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
+// ============================================
+// LEVELING & RANKING SYSTEM
+// ============================================
+
+/**
+ * Calculates user level based on cumulative XP.
+ * Formula: XP = 50 * (Level^2) + 350 * Level - 400
+ * Inverse: Level = (-7 + sqrt(81 + 0.08 * XP)) / 2
+ */
+function calculateLevel(xp) {
+    if (!xp || xp < 500) return 1;
+    const level = Math.floor((-7 + Math.sqrt(81 + 0.08 * xp)) / 2);
+    return Math.max(1, level);
+}
+
+/**
+ * Gets the rank title based on level
+ */
+function getRankName(level) {
+    if (level < 5) return 'Newcomer';
+    if (level < 10) return 'Noob Developer';
+    if (level < 15) return 'Syntax Sourcerer';
+    if (level < 20) return 'Logic Lord';
+    return 'The Architect';
+}
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
@@ -652,16 +678,35 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// Middleware to verify token
-const authenticate = (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
+// Middleware to verify token and update last active timestamp
+const authenticate = async (req, res, next) => {
     try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
         const decoded = jwt.verify(token, JWT_SECRET);
         req.userId = decoded.userId;
+
+        // Fetch user once to check last_active and other needs (non-blocking)
+        try {
+            const { data: user } = await supabase.from('users').select('last_active').eq('id', req.userId).single();
+            if (user) {
+                req.oldLastActive = user.last_active;
+
+                // Only update last_active if it's older than 5 minutes to reduce DB load
+                const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+                if (!user.last_active || new Date(user.last_active) < fiveMinsAgo) {
+                    supabase.from('users').update({ last_active: new Date().toISOString() }).eq('id', req.userId).then(() => { }).catch(e => console.error('Auth activity update error:', e));
+                }
+            }
+        } catch (dbErr) {
+            console.error('Auth DB error (non-critical):', dbErr.message);
+            // Continue anyway - the user is authenticated
+        }
+
         next();
     } catch (err) {
+        console.error('Auth middleware error:', err.message);
         res.status(401).json({ error: 'Invalid token' });
     }
 };
@@ -677,12 +722,14 @@ app.get('/api/auth/profile', authenticate, async (req, res) => {
         if (error || !user) return res.status(404).json({ error: 'User not found' });
 
         // Map to expected format
+        const currentLevel = calculateLevel(user.xp || 0);
         res.json({
             id: user.id,
             username: user.username,
             email: user.email,
-            level: user.level,
-            xp: user.xp,
+            level: currentLevel,
+            xp: user.xp || 0,
+            rank: getRankName(currentLevel),
             solvedChallenges: user.solved_challenges || [],
             created_at: user.created_at
         });
@@ -760,8 +807,8 @@ app.get('/api/leaderboard', async (req, res) => {
         // Map to expected format
         const formattedUsers = users.map(u => ({
             username: u.username,
-            level: u.level,
-            xp: u.xp,
+            level: calculateLevel(u.xp || 0),
+            xp: u.xp || 0,
             solvedChallenges: u.solved_challenges
         }));
 
@@ -790,19 +837,26 @@ async function executeWithPiston(language, code, input) {
 }
 
 app.post('/api/run', async (req, res) => {
-    const { code, language, challengeId, token, type = 'run' } = req.body;
-
-    let userId = null;
-    if (token) {
-        try {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            userId = decoded.userId;
-        } catch (err) {
-            console.error('Invalid token during execution');
-        }
-    }
-
     try {
+        const { code, language, challengeId, type = 'run', localDate, token: bodyToken } = req.body;
+
+        // Optional Authentication: Allow 'run' without login, but require it for 'submit'
+        let userId = null;
+        const authHeader = req.headers.authorization;
+        const token = (authHeader && authHeader.split(' ')[1]) || bodyToken;
+
+        if (token && token !== 'null' && token !== 'undefined') {
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET);
+                userId = decoded.userId;
+            } catch (err) {
+                console.error('JWT Verification failed in /api/run:', err.message);
+                if (type === 'submit') return res.status(401).json({ error: 'Session expired. Please login again to submit.' });
+            }
+        } else if (type === 'submit') {
+            return res.status(401).json({ error: 'You must be logged in to submit challenges.' });
+        }
+
         const { data: challenge, error } = await supabase
             .from('challenges')
             .select('*')
@@ -862,20 +916,27 @@ app.post('/api/run', async (req, res) => {
 
             // Database updates only for successful submission
             if (type === 'submit' && userId) {
-                const { data: user } = await supabase
+                const { data: user, error: userError } = await supabase
                     .from('users')
                     .select('*')
                     .eq('id', userId)
                     .single();
 
-                if (user) {
-                    const alreadySolved = user.solved_challenges?.includes(challenge.id);
-                    if (!alreadySolved) {
-                        const newSolvedChallenges = [...(user.solved_challenges || []), challenge.id];
-                        const newXp = user.xp + challenge.points;
-                        const newLevel = Math.floor(newXp / 500) + 1;
+                if (userError) console.error('Error fetching user for update:', userError.message);
 
-                        await supabase
+                if (user) {
+                    const currentSolved = user.solved_challenges || [];
+                    // Robust check: convert to strings to avoid type mismatch
+                    const isAlreadySolved = currentSolved.some(id => String(id) === String(challenge.id));
+
+                    if (!isAlreadySolved) {
+                        const newSolvedChallenges = [...currentSolved, challenge.id];
+                        const newXp = (user.xp || 0) + challenge.points;
+                        const newLevel = calculateLevel(newXp);
+
+                        console.log(`Updating user ${userId}: XP ${user.xp} -> ${newXp}, Level ${user.level} -> ${newLevel}`);
+
+                        const { error: updateError } = await supabase
                             .from('users')
                             .update({
                                 solved_challenges: newSolvedChallenges,
@@ -884,8 +945,16 @@ app.post('/api/run', async (req, res) => {
                             })
                             .eq('id', userId);
 
-                        // Update activity feed
-                        await updateUserActivity(userId, challenge.points, true);
+                        if (updateError) {
+                            console.error('Failed to update user stats:', updateError.message);
+                        } else {
+                            // Update activity feed with client date if provided
+                            await updateUserActivity(userId, challenge.points, true, localDate);
+                        }
+                    } else {
+                        console.log(`Challenge ${challenge.id} already solved by user ${userId}. Skipping XP reward.`);
+                        // Still update activity (without XP reward) to show activity square
+                        await updateUserActivity(userId, 0, false, localDate);
                     }
                 }
             }
@@ -893,14 +962,30 @@ app.post('/api/run', async (req, res) => {
             outputLog += `\nFailed: Some tests did not pass.`;
         }
 
+        // Fetch updated user data to return for real-time UI updates
+        let updatedUser = null;
+        if (userId) {
+            const { data: freshUser } = await supabase.from('users').select('id, username, email, xp, solved_challenges, last_active').eq('id', userId).single();
+            if (freshUser) {
+                const level = calculateLevel(freshUser.xp || 0);
+                updatedUser = {
+                    ...freshUser,
+                    level,
+                    rank: getRankName(level),
+                    solvedChallenges: freshUser.solved_challenges || []
+                };
+            }
+        }
+
         res.json({
             status: allPassed ? 'success' : 'error',
             output: outputLog,
             testResults,
-            points: (type === 'submit' && allPassed) ? challenge.points : 0
+            points: (type === 'submit' && allPassed) ? challenge.points : 0,
+            user: updatedUser
         });
     } catch (err) {
-        console.error(err);
+        console.error('CRITICAL ERROR in /api/run:', err);
         res.status(500).json({ error: 'Server error during execution' });
     }
 });
@@ -910,8 +995,8 @@ app.post('/api/run', async (req, res) => {
 // ============================================
 
 // Update user streak and activity
-async function updateUserActivity(userId, xpEarned = 0, challengeSolved = false) {
-    const today = new Date().toISOString().split('T')[0];
+async function updateUserActivity(userId, xpEarned = 0, challengeSolved = false, clientDate = null) {
+    const today = clientDate || new Date().toISOString().split('T')[0];
 
     try {
         // Get or create today's activity
@@ -949,15 +1034,25 @@ async function updateUserActivity(userId, xpEarned = 0, challengeSolved = false)
             .single();
 
         if (user) {
-            const lastActive = user.last_active;
+            const todayStr = today;
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-            let newStreak = user.streak_count;
-            if (lastActive === yesterdayStr) {
-                newStreak = user.streak_count + 1;
-            } else if (lastActive !== today) {
+            // Use the "old" last active if available to prevent current session from confusing the logic
+            const lastActiveRef = user.last_active;
+            const lastActiveDate = lastActiveRef ? new Date(lastActiveRef).toISOString().split('T')[0] : null;
+
+            let newStreak = user.streak_count || 0;
+
+            if (lastActiveDate === yesterdayStr) {
+                // If last active was exactly yesterday, increment
+                newStreak = (user.streak_count || 0) + 1;
+            } else if (lastActiveDate === todayStr) {
+                // Already active today, maintain current streak
+                newStreak = user.streak_count || 1;
+            } else {
+                // Not yesterday, not today -> reset or start
                 newStreak = 1;
             }
 
@@ -1469,9 +1564,15 @@ app.post('/api/battles/:battleId/submit', authenticate, async (req, res) => {
                 .single();
 
             if (winner) {
+                const newXp = (winner.xp || 0) + xpToAdd;
+                const newLevel = calculateLevel(newXp);
+
                 await supabase
                     .from('users')
-                    .update({ xp: (winner.xp || 0) + xpToAdd })
+                    .update({
+                        xp: newXp,
+                        level: newLevel
+                    })
                     .eq('id', req.userId);
             }
 
@@ -1679,12 +1780,13 @@ app.get('/api/friends', authenticate, async (req, res) => {
     try {
         const { data: friendships } = await supabase
             .from('friendships')
-            .select('*, friend:friend_id(id, username, level, xp, streak_count)')
+            .select('*, friend:friend_id(id, username, level, xp, last_active)')
             .eq('user_id', req.userId)
             .eq('status', 'accepted');
 
         res.json(friendships || []);
     } catch (err) {
+        console.error('Fetch friends error:', err);
         res.status(500).json({ error: 'Failed to fetch friends' });
     }
 });
@@ -1694,7 +1796,7 @@ app.get('/api/friends/requests', authenticate, async (req, res) => {
     try {
         const { data } = await supabase
             .from('friendships')
-            .select('*, user:user_id(id, username, level)')
+            .select('*, user:user_id(id, username, level, xp)')
             .eq('friend_id', req.userId)
             .eq('status', 'pending');
 
@@ -2525,62 +2627,102 @@ app.get('/api/challenges/random', async (req, res) => {
 // ============================================
 
 // Get activity heatmap data
-app.get('/api/activity/heatmap', authenticate, async (req, res) => {
+app.get('/api/activity/heatmap', async (req, res) => {
+    console.log('=== HEATMAP ENDPOINT HIT ===');
     try {
+        // Inline authentication
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            console.log('Heatmap: No auth header');
+            return res.status(200).json([]);
+        }
+
+        const token = authHeader.split(' ')[1];
+        if (!token) {
+            console.log('Heatmap: No token');
+            return res.status(200).json([]);
+        }
+
+        let userId;
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            userId = decoded.userId;
+            console.log('Heatmap request for user:', userId);
+        } catch (jwtErr) {
+            console.log('Heatmap: JWT error', jwtErr.message);
+            return res.status(200).json([]);
+        }
+
+        const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
         const { data, error } = await supabase
             .from('user_activity')
-            .select('activity_date')
-            .eq('user_id', req.userId)
-            .gte('activity_date', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString());
+            .select('activity_date, challenges_solved')
+            .eq('user_id', userId)
+            .gte('activity_date', oneYearAgo);
 
         if (error) {
             console.error('Heatmap query error:', error.message);
-            return res.json([]);
+            return res.status(200).json([]);
         }
 
-        // Group by date and count
-        const grouped = {};
-        (data || []).forEach(a => {
-            const date = a.activity_date;
-            if (date) grouped[date] = (grouped[date] || 0) + 1;
-        });
+        console.log('Heatmap data found:', data?.length || 0, 'records');
 
-        const result = Object.entries(grouped).map(([date, count]) => ({ date, count }));
-        res.json(result);
+        // Map activity data to simplified format for frontend
+        const result = (data || []).map(a => ({
+            date: a.activity_date,
+            count: a.challenges_solved || 0
+        }));
+
+        return res.status(200).json(result);
     } catch (err) {
-        console.error('Heatmap crash:', err.message);
-        res.json([]);
+        console.error('Heatmap crash:', err);
+        return res.status(200).json([]);
     }
 });
 
 // Get activity feed
 app.get('/api/activity/feed', async (req, res) => {
+    console.log('=== FEED ENDPOINT HIT ===');
     try {
         const { data, error } = await supabase
             .from('user_activity')
-            .select(`
-                *,
-                users(username)
-            `)
+            .select('activity_date, challenges_solved, xp_earned, user_id, created_at')
             .order('created_at', { ascending: false })
             .limit(50);
 
         if (error) {
             console.error('Activity feed query error:', error.message);
-            return res.json([]);
+            return res.status(200).json([]);
+        }
+
+        // Get usernames for the activities
+        const userIds = [...new Set((data || []).map(a => a.user_id))];
+
+        let userMap = {};
+        if (userIds.length > 0) {
+            const { data: users } = await supabase
+                .from('users')
+                .select('id, username')
+                .in('id', userIds);
+
+            userMap = (users || []).reduce((acc, u) => {
+                acc[u.id] = u.username;
+                return acc;
+            }, {});
         }
 
         const activities = (data || []).map(a => ({
-            username: a.users?.username || 'User',
+            username: userMap[a.user_id] || 'User',
             action: 'completed task',
             challenge_title: 'CodeNexus Challenge',
             created_at: a.created_at
         }));
 
-        res.json(activities);
+        return res.status(200).json(activities);
     } catch (err) {
-        console.error('Activity feed crash:', err.message);
-        res.json([]);
+        console.error('Activity feed crash:', err);
+        return res.status(200).json([]);
     }
 });
 
@@ -2813,7 +2955,10 @@ app.get('/api/stats/:userId', async (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
+    console.error('=== UNHANDLED ERROR ===');
+    console.error('Path:', req.path);
+    console.error('Error:', err.message);
+    console.error('Stack:', err.stack);
     res.status(500).json({ error: 'Internal server error' });
 });
 

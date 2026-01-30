@@ -8,7 +8,17 @@
 -- Users table (enhanced)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_count INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS best_streak INTEGER DEFAULT 0;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active DATE;
+
+-- Safely handle last_active: add if missing, or upgrade to TIMESTAMPTZ if it exists as DATE
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_active') THEN
+        ALTER TABLE users ALTER COLUMN last_active TYPE TIMESTAMPTZ USING last_active::TIMESTAMPTZ;
+    ELSE
+        ALTER TABLE users ADD COLUMN last_active TIMESTAMPTZ;
+    END IF;
+END $$;
+
 ALTER TABLE users ADD COLUMN IF NOT EXISTS total_time_spent INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(50) DEFAULT 'dark';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;

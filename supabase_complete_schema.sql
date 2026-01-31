@@ -1,8 +1,11 @@
--- CodeNexus Full Feature Database Schema v2
--- Run this in Supabase SQL Editor
+-- ============================================================
+-- CODENEXUS COMPLETE DATABASE SCHEMA
+-- Version: 3.0 (Master Combined Schema)
+-- Run this ONCE in Supabase SQL Editor to set up everything
+-- ============================================================
 
 -- ============================================
--- CORE TABLES (Updated)
+-- SECTION 1: CORE TABLE ENHANCEMENTS
 -- ============================================
 
 -- Users table (enhanced)
@@ -43,7 +46,7 @@ ALTER TABLE challenges ADD COLUMN IF NOT EXISTS solve_count INTEGER DEFAULT 0;
 ALTER TABLE challenges ADD COLUMN IF NOT EXISTS like_count INTEGER DEFAULT 0;
 
 -- ============================================
--- STREAK & ACTIVITY TRACKING
+-- SECTION 2: STREAK & ACTIVITY TRACKING
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS user_activity (
@@ -60,7 +63,7 @@ CREATE TABLE IF NOT EXISTS user_activity (
 CREATE INDEX IF NOT EXISTS idx_user_activity_date ON user_activity(user_id, activity_date);
 
 -- ============================================
--- BATTLE MODE
+-- SECTION 3: BATTLE MODE
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS battles (
@@ -68,7 +71,7 @@ CREATE TABLE IF NOT EXISTS battles (
     player1_id UUID REFERENCES users(id),
     player2_id UUID REFERENCES users(id),
     challenge_id INTEGER REFERENCES challenges(id),
-    status VARCHAR(20) DEFAULT 'waiting', -- waiting, active, completed, cancelled
+    status VARCHAR(20) DEFAULT 'waiting',
     winner_id UUID REFERENCES users(id),
     player1_time INTEGER,
     player2_time INTEGER,
@@ -89,7 +92,7 @@ CREATE TABLE IF NOT EXISTS battle_queue (
 );
 
 -- ============================================
--- TOURNAMENTS
+-- SECTION 4: TOURNAMENTS
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS tournaments (
@@ -99,7 +102,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
     start_date TIMESTAMP NOT NULL,
     end_date TIMESTAMP NOT NULL,
     challenge_ids INTEGER[],
-    status VARCHAR(20) DEFAULT 'upcoming', -- upcoming, active, completed
+    status VARCHAR(20) DEFAULT 'upcoming',
     prize_xp INTEGER DEFAULT 500,
     max_participants INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -118,7 +121,7 @@ CREATE TABLE IF NOT EXISTS tournament_participants (
 );
 
 -- ============================================
--- SKILL TREES
+-- SECTION 5: SKILL TREES
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS skill_categories (
@@ -152,20 +155,18 @@ CREATE TABLE IF NOT EXISTS user_skills (
 );
 
 -- ============================================
--- SOCIAL FEATURES
+-- SECTION 6: SOCIAL FEATURES
 -- ============================================
 
--- Friends
 CREATE TABLE IF NOT EXISTS friendships (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     friend_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(20) DEFAULT 'pending', -- pending, accepted, blocked
+    status VARCHAR(20) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, friend_id)
 );
 
--- Teams/Clans
 CREATE TABLE IF NOT EXISTS teams (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -177,7 +178,6 @@ CREATE TABLE IF NOT EXISTS teams (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Discussions
 CREATE TABLE IF NOT EXISTS discussions (
     id SERIAL PRIMARY KEY,
     challenge_id INTEGER REFERENCES challenges(id) ON DELETE CASCADE,
@@ -197,7 +197,6 @@ CREATE TABLE IF NOT EXISTS discussion_likes (
     UNIQUE(discussion_id, user_id)
 );
 
--- Solutions
 CREATE TABLE IF NOT EXISTS user_solutions (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -220,39 +219,52 @@ CREATE TABLE IF NOT EXISTS solution_likes (
 );
 
 -- ============================================
--- LEARNING FEATURES
+-- SECTION 7: DYNAMIC LEARNING PATHS
 -- ============================================
 
--- Learning Paths
+-- Drop old learning_paths table if it exists with different structure
+DROP TABLE IF EXISTS user_learning_paths CASCADE;
+DROP TABLE IF EXISTS learning_paths CASCADE;
+
+-- New dynamic learning paths table
 CREATE TABLE IF NOT EXISTS learning_paths (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(200) NOT NULL,
+    name VARCHAR(100) NOT NULL,
     description TEXT,
-    difficulty VARCHAR(20),
-    challenge_ids INTEGER[],
-    xp_reward INTEGER DEFAULT 200,
-    badge_name VARCHAR(100),
+    icon VARCHAR(50) DEFAULT 'fa-route',
+    difficulty_level VARCHAR(20) DEFAULT 'beginner',
+    xp_reward INTEGER DEFAULT 100,
+    is_active BOOLEAN DEFAULT TRUE,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO learning_paths (name, description, difficulty, challenge_ids, xp_reward, badge_name) VALUES
-('Getting Started', 'Perfect for beginners learning the basics', 'Easy', ARRAY[1, 2], 100, 'Beginner'),
-('Data Structures 101', 'Master fundamental data structures', 'Medium', ARRAY[1, 2, 3], 200, 'Data Master'),
-('Algorithm Expert', 'Advanced algorithmic challenges', 'Hard', ARRAY[3, 4, 5], 500, 'Algorithm Expert')
-ON CONFLICT DO NOTHING;
+-- Bridge table linking paths to specific challenges
+CREATE TABLE IF NOT EXISTS learning_path_challenges (
+    id SERIAL PRIMARY KEY,
+    path_id INTEGER REFERENCES learning_paths(id) ON DELETE CASCADE,
+    challenge_id INTEGER REFERENCES challenges(id) ON DELETE CASCADE,
+    sort_order INTEGER DEFAULT 0,
+    UNIQUE(path_id, challenge_id)
+);
 
-CREATE TABLE IF NOT EXISTS user_learning_paths (
+-- User progress tracking for paths
+CREATE TABLE IF NOT EXISTS user_path_progress (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    path_id INTEGER REFERENCES learning_paths(id),
-    progress INTEGER DEFAULT 0,
-    completed BOOLEAN DEFAULT FALSE,
+    path_id INTEGER REFERENCES learning_paths(id) ON DELETE CASCADE,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
     UNIQUE(user_id, path_id)
 );
 
--- Hint Usage
+CREATE INDEX IF NOT EXISTS idx_learning_path_challenges_path ON learning_path_challenges(path_id);
+CREATE INDEX IF NOT EXISTS idx_user_path_progress_user ON user_path_progress(user_id);
+
+-- ============================================
+-- SECTION 8: HINTS & USER PREFERENCES
+-- ============================================
+
 CREATE TABLE IF NOT EXISTS hint_usage (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -262,10 +274,6 @@ CREATE TABLE IF NOT EXISTS hint_usage (
     used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, challenge_id, hint_level)
 );
-
--- ============================================
--- USER PREFERENCES & CUSTOMIZATION
--- ============================================
 
 CREATE TABLE IF NOT EXISTS user_settings (
     id SERIAL PRIMARY KEY,
@@ -283,7 +291,6 @@ CREATE TABLE IF NOT EXISTS user_settings (
     sound_enabled BOOLEAN DEFAULT TRUE
 );
 
--- Code Templates
 CREATE TABLE IF NOT EXISTS code_templates (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -295,10 +302,9 @@ CREATE TABLE IF NOT EXISTS code_templates (
 );
 
 -- ============================================
--- QUALITY OF LIFE
+-- SECTION 9: BOOKMARKS & NOTES
 -- ============================================
 
--- Bookmarks
 CREATE TABLE IF NOT EXISTS bookmarks (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -307,7 +313,6 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     UNIQUE(user_id, challenge_id)
 );
 
--- Notes
 CREATE TABLE IF NOT EXISTS user_notes (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -318,7 +323,7 @@ CREATE TABLE IF NOT EXISTS user_notes (
 );
 
 -- ============================================
--- ACHIEVEMENTS & BADGES
+-- SECTION 10: ACHIEVEMENTS & BADGES
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS achievements (
@@ -327,9 +332,9 @@ CREATE TABLE IF NOT EXISTS achievements (
     description TEXT,
     icon VARCHAR(50),
     xp_reward INTEGER DEFAULT 50,
-    requirement_type VARCHAR(50), -- challenges_solved, streak, xp_earned, etc.
+    requirement_type VARCHAR(50),
     requirement_value INTEGER,
-    rarity VARCHAR(20) DEFAULT 'common' -- common, rare, epic, legendary
+    rarity VARCHAR(20) DEFAULT 'common'
 );
 
 INSERT INTO achievements (name, description, icon, xp_reward, requirement_type, requirement_value, rarity) VALUES
@@ -361,7 +366,7 @@ CREATE TABLE IF NOT EXISTS user_achievements (
 );
 
 -- ============================================
--- NOTIFICATIONS
+-- SECTION 11: NOTIFICATIONS
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS notifications (
@@ -376,7 +381,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 -- ============================================
--- INDEXES FOR PERFORMANCE
+-- SECTION 12: PERFORMANCE INDEXES
 -- ============================================
 
 CREATE INDEX IF NOT EXISTS idx_battles_status ON battles(status);
@@ -385,3 +390,60 @@ CREATE INDEX IF NOT EXISTS idx_discussions_challenge ON discussions(challenge_id
 CREATE INDEX IF NOT EXISTS idx_solutions_challenge ON user_solutions(challenge_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read);
 CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id, status);
+
+-- ============================================
+-- SECTION 13: DISABLE ROW LEVEL SECURITY
+-- (Required for server-side operations)
+-- ============================================
+
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_activity DISABLE ROW LEVEL SECURITY;
+ALTER TABLE learning_paths DISABLE ROW LEVEL SECURITY;
+ALTER TABLE learning_path_challenges DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_path_progress DISABLE ROW LEVEL SECURITY;
+
+-- ============================================
+-- SECTION 14: SEED LEARNING PATHS DATA
+-- ============================================
+
+-- Insert the default learning paths
+INSERT INTO learning_paths (id, name, description, icon, difficulty_level, xp_reward, sort_order) VALUES
+(1, 'Getting Started', 'Perfect for beginners learning the basics', 'fa-seedling', 'beginner', 100, 1),
+(2, 'Data Structures 101', 'Master fundamental data structures', 'fa-database', 'intermediate', 200, 2),
+(3, 'Algorithm Expert', 'Advanced algorithmic challenges', 'fa-rocket', 'advanced', 500, 3)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    icon = EXCLUDED.icon,
+    difficulty_level = EXCLUDED.difficulty_level,
+    xp_reward = EXCLUDED.xp_reward,
+    sort_order = EXCLUDED.sort_order;
+
+-- Link challenges to paths (runs after challenges are seeded by server)
+-- Path 1: Getting Started (Easy challenges)
+INSERT INTO learning_path_challenges (path_id, challenge_id, sort_order)
+SELECT 1, id, ROW_NUMBER() OVER (ORDER BY id)
+FROM challenges
+WHERE difficulty = 'Easy'
+LIMIT 5
+ON CONFLICT (path_id, challenge_id) DO NOTHING;
+
+-- Path 2: Data Structures 101 (Arrays and Strings)
+INSERT INTO learning_path_challenges (path_id, challenge_id, sort_order)
+SELECT 2, id, ROW_NUMBER() OVER (ORDER BY id)
+FROM challenges
+WHERE category IN ('Arrays', 'Strings')
+LIMIT 10
+ON CONFLICT (path_id, challenge_id) DO NOTHING;
+
+-- Path 3: Algorithm Expert (Medium and Hard challenges)
+INSERT INTO learning_path_challenges (path_id, challenge_id, sort_order)
+SELECT 3, id, ROW_NUMBER() OVER (ORDER BY id)
+FROM challenges
+WHERE difficulty IN ('Medium', 'Hard')
+LIMIT 15
+ON CONFLICT (path_id, challenge_id) DO NOTHING;
+
+-- ============================================
+-- DONE! Your database is now fully set up.
+-- ============================================

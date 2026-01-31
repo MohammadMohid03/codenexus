@@ -1566,52 +1566,109 @@ function loadTournaments() {
     console.log('Tournaments loaded');
 }
 
-// Load learning paths progress
-function loadLearningPaths() {
-    if (!currentUser) return;
+// Load learning paths from API
+let learningPaths = []; // Cache for learning paths data
 
-    // Update path progress based on solved challenges
-    const solvedCount = currentUser.solvedChallenges?.length || 0;
+async function loadLearningPaths() {
+    const container = document.getElementById('learning-paths-container');
+    if (!container) return;
 
-    document.querySelectorAll('.path-card').forEach(card => {
-        const pathNum = card.dataset.path;
-        const progressBar = card.querySelector('.path-bar');
+    try {
+        const response = await fetch('/api/learning-paths');
+        const paths = await response.json();
 
-        if (progressBar) {
-            let progress = 0;
-            if (pathNum === '1') progress = Math.min((solvedCount / 5) * 100, 100);
-            else if (pathNum === '2') progress = Math.min((solvedCount / 10) * 100, 100);
-            else if (pathNum === '3') progress = Math.min((solvedCount / 15) * 100, 100);
+        learningPaths = paths; // Cache the paths
 
-            progressBar.style.width = `${progress}%`;
+        if (paths.length === 0) {
+            container.innerHTML = '<p class="no-paths">No learning paths available yet.</p>';
+            return;
         }
-    });
+
+        // Get user's solved challenges for progress calculation
+        const solvedIds = currentUser?.solvedChallenges || [];
+
+        // Render all paths
+        container.innerHTML = paths.map(path => renderPathCard(path, solvedIds)).join('');
+    } catch (err) {
+        console.error('Failed to load learning paths:', err);
+        container.innerHTML = '<p class="error-paths">Failed to load learning paths. Please refresh.</p>';
+    }
 }
 
-// Start a learning path
-function startLearningPath(pathId) {
-    // Filter challenges for this path and open the first unsolved one
-    let pathChallenges = [];
+// Render a single path card
+function renderPathCard(path, solvedIds = []) {
+    // Calculate progress: how many of this path's challenges are solved
+    const pathChallengeIds = path.challengeIds || [];
+    const solvedInPath = pathChallengeIds.filter(id => solvedIds.includes(id)).length;
+    const totalInPath = path.challengeCount || pathChallengeIds.length || 1;
+    const progressPercent = Math.min((solvedInPath / totalInPath) * 100, 100);
 
-    if (pathId === 1) {
-        pathChallenges = allChallenges.filter(c => c.difficulty === 'Easy').slice(0, 5);
-    } else if (pathId === 2) {
-        pathChallenges = allChallenges.filter(c => ['Arrays', 'Strings'].includes(c.category)).slice(0, 10);
-    } else if (pathId === 3) {
-        pathChallenges = allChallenges.filter(c => c.difficulty !== 'Easy').slice(0, 15);
+    // Determine icon class based on difficulty level
+    const difficultyClass = path.difficulty_level || 'beginner';
+
+    return `
+        <div class="path-card glass-card" data-path="${path.id}">
+            <div class="path-icon ${difficultyClass}">
+                <i class="fa-solid ${path.icon || 'fa-route'}"></i>
+            </div>
+            <h4>${path.name}</h4>
+            <p>${path.description || ''}</p>
+            <div class="path-info">
+                <span><i class="fa-solid fa-puzzle-piece"></i> ${totalInPath} Challenges</span>
+                <span><i class="fa-solid fa-coins"></i> ${path.xp_reward || 0} XP</span>
+            </div>
+            <div class="path-progress">
+                <div class="path-bar" style="width: ${progressPercent}%"></div>
+            </div>
+            <button class="cta-btn small-btn" onclick="startLearningPath(${path.id})">
+                ${progressPercent >= 100 ? 'Review Path' : progressPercent > 0 ? 'Continue' : 'Start Path'}
+            </button>
+        </div>
+    `;
+}
+
+// Start a learning path - fetches challenges from API
+async function startLearningPath(pathId) {
+    if (!currentUser) {
+        showToast('Please login to start a learning path', 'error');
+        return;
     }
 
-    const solvedIds = currentUser?.solvedChallenges || [];
-    const unsolved = pathChallenges.find(c => !solvedIds.includes(c.id));
+    try {
+        // Get full path details with challenges
+        const response = await fetch(`/api/learning-paths/${pathId}`);
+        const pathData = await response.json();
 
-    if (unsolved) {
-        openChallenge(unsolved.id);
-        showToast(`Starting learning path ${pathId}!`, 'success');
-    } else if (pathChallenges.length > 0) {
-        openChallenge(pathChallenges[0].id);
-        showToast('Path completed! Reviewing challenges...', 'info');
-    } else {
-        showToast('No challenges available for this path', 'error');
+        if (!pathData || !pathData.challenges || pathData.challenges.length === 0) {
+            showToast('No challenges found in this path', 'error');
+            return;
+        }
+
+        const solvedIds = currentUser?.solvedChallenges || [];
+        const pathChallenges = pathData.challenges;
+
+        // Find first unsolved challenge
+        const unsolved = pathChallenges.find(c => !solvedIds.includes(c.id));
+
+        // Track that user started/continued this path
+        if (token) {
+            fetch(`/api/learning-paths/${pathId}/start`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).catch(() => { }); // Non-blocking
+        }
+
+        if (unsolved) {
+            openChallenge(unsolved.id);
+            showToast(`Starting "${pathData.name}"!`, 'success');
+        } else {
+            // All solved, open first for review
+            openChallenge(pathChallenges[0].id);
+            showToast(`"${pathData.name}" completed! Reviewing...`, 'info');
+        }
+    } catch (err) {
+        console.error('Failed to start path:', err);
+        showToast('Failed to start learning path', 'error');
     }
 }
 
@@ -3202,64 +3259,8 @@ async function joinTournament(tournamentId) {
     }
 }
 
-// Learning Paths (Dynamic)
-async function loadLearningPaths() {
-    try {
-        const response = await fetch('/api/learn/paths');
-        const paths = await response.json();
-
-        const container = document.getElementById('learning-paths-list');
-        if (container) {
-            container.innerHTML = paths.map(p => `
-                <div class="learning-path-card">
-                    <div class="path-icon"><i class="fa-solid ${p.icon || 'fa-road'}"></i></div>
-                    <h3>${p.name}</h3>
-                    <p>${p.description}</p>
-                    <div class="path-stats">
-                        <span>${p.challenge_count || 0} challenges</span>
-                        <span>${p.estimated_hours || 0}h estimated</span>
-                    </div>
-                    <div class="path-progress">
-                        <div class="path-progress-bar" style="width: ${p.progress || 0}%"></div>
-                    </div>
-                    <button onclick="startLearningPath('${p.id}')" class="btn-start-path">
-                        ${p.progress > 0 ? 'Continue' : 'Start'} Path
-                    </button>
-                </div>
-            `).join('') || '<p class="empty-state">No learning paths available</p>';
-        }
-    } catch (err) {
-        console.error('Load paths error:', err);
-    }
-}
-
-async function startLearningPath(pathId) {
-    if (!token) {
-        showToast('Please login to start learning paths', 'error');
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/learn/paths/${pathId}/start`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-
-        showToast('Starting learning path...', 'info');
-
-        // Navigate to challenges page filtered by this path
-        navigateTo('challenges');
-
-        // Filter challenges for this path
-        if (data.challengeIds && data.challengeIds.length > 0) {
-            const filtered = allChallenges.filter(c => data.challengeIds.includes(c.id));
-            renderChallenges(filtered);
-        }
-    } catch (err) {
-        showToast('Failed to start path', 'error');
-    }
-}
+// Learning Paths - functions defined earlier in file (lines 1572-1672)
+// Using /api/learning-paths endpoints
 
 // Skill Tree (Dynamic)
 async function loadSkillTree() {

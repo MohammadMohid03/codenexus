@@ -618,53 +618,11 @@
                     </div>
 
                     <!-- Learning Paths -->
-                    <div class="learning-paths-grid">
-                        <div class="path-card glass-card" data-path="1">
-                            <div class="path-icon beginner">
-                                <i class="fa-solid fa-seedling"></i>
-                            </div>
-                            <h4>Getting Started</h4>
-                            <p>Perfect for beginners learning the basics</p>
-                            <div class="path-info">
-                                <span><i class="fa-solid fa-puzzle-piece"></i> 5 Challenges</span>
-                                <span><i class="fa-solid fa-coins"></i> 100 XP</span>
-                            </div>
-                            <div class="path-progress">
-                                <div class="path-bar" style="width: 0%"></div>
-                            </div>
-                            <button class="cta-btn small-btn" onclick="startLearningPath(1)">Start Path</button>
-                        </div>
-
-                        <div class="path-card glass-card" data-path="2">
-                            <div class="path-icon intermediate">
-                                <i class="fa-solid fa-database"></i>
-                            </div>
-                            <h4>Data Structures 101</h4>
-                            <p>Master fundamental data structures</p>
-                            <div class="path-info">
-                                <span><i class="fa-solid fa-puzzle-piece"></i> 10 Challenges</span>
-                                <span><i class="fa-solid fa-coins"></i> 200 XP</span>
-                            </div>
-                            <div class="path-progress">
-                                <div class="path-bar" style="width: 0%"></div>
-                            </div>
-                            <button class="cta-btn small-btn" onclick="startLearningPath(2)">Start Path</button>
-                        </div>
-
-                        <div class="path-card glass-card" data-path="3">
-                            <div class="path-icon advanced">
-                                <i class="fa-solid fa-rocket"></i>
-                            </div>
-                            <h4>Algorithm Expert</h4>
-                            <p>Advanced algorithmic challenges</p>
-                            <div class="path-info">
-                                <span><i class="fa-solid fa-puzzle-piece"></i> 15 Challenges</span>
-                                <span><i class="fa-solid fa-coins"></i> 500 XP</span>
-                            </div>
-                            <div class="path-progress">
-                                <div class="path-bar" style="width: 0%"></div>
-                            </div>
-                            <button class="cta-btn small-btn" onclick="startLearningPath(3)">Start Path</button>
+                    <div class="learning-paths-grid" id="learning-paths-container">
+                        <!-- Loading placeholder -->
+                        <div class="loading-paths">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <span>Loading learning paths...</span>
                         </div>
                     </div>
                 </div>

@@ -5423,3 +5423,28 @@ textarea:focus,
     background: #ef4444;
     color: white;
 }
+
+/* ============================================
+   DYNAMIC LEARNING PATHS
+============================================ */
+.loading-paths,
+.no-paths,
+.error-paths {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    grid-column: 1 / -1;
+}
+
+.loading-paths i {
+    font-size: 24px;
+    color: var(--accent-primary);
+}
+
+.error-paths {
+    color: #ef4444;
+}

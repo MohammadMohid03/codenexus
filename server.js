@@ -497,8 +497,429 @@ const initialChallenges = [
         editorial: 'Kadane\'s algorithm: currentMax = max(num, currentMax + num), track globalMax.',
         tags: ['dynamic-programming', 'arrays'],
         time_limit: 300
+    },
+    // ============== NEW CHALLENGES 26-50 ==============
+    {
+        id: 26,
+        title: "Longest Common Prefix",
+        difficulty: "Easy",
+        category: "Strings",
+        description: "Find the longest common prefix string amongst an array of strings.\n\nInput Format:\nFirst line: N (number of strings)\nNext N lines: One string each\n\nOutput Format:\nLongest common prefix (or empty line if none).",
+        points: 100,
+        test_cases: [
+            { input: "3\nflower\nflow\nflight", expected: "fl" },
+            { input: "3\ndog\nracecar\ncar", expected: "" },
+            { input: "2\ninteresting\ninteractive", expected: "inter" }
+        ],
+        hints: ['Compare characters at same position', 'Stop when characters differ', 'Handle edge cases with empty strings'],
+        editorial: 'Compare character by character across all strings. Stop when mismatch found.',
+        tags: ['strings', 'prefix'],
+        time_limit: 300
+    },
+    {
+        id: 27,
+        title: "Valid Parentheses",
+        difficulty: "Medium",
+        category: "Strings",
+        description: "Determine if the input string has valid parentheses. Valid means every opening bracket has a corresponding closing bracket in correct order.\n\nInput Format:\nA string containing only '(', ')', '{', '}', '[', ']'\n\nOutput Format:\n'true' or 'false'.",
+        points: 150,
+        test_cases: [
+            { input: "()", expected: "true" },
+            { input: "()[]{}", expected: "true" },
+            { input: "(]", expected: "false" },
+            { input: "([)]", expected: "false" },
+            { input: "{[]}", expected: "true" }
+        ],
+        hints: ['Use a stack', 'Push opening brackets', 'Pop and match for closing brackets'],
+        editorial: 'Use stack. Push opening brackets. For closing, pop and check match.',
+        tags: ['strings', 'stack'],
+        time_limit: 300
+    },
+    {
+        id: 28,
+        title: "Climbing Stairs",
+        difficulty: "Medium",
+        category: "Dynamic Programming",
+        description: "You are climbing a staircase with N steps. Each time you can climb 1 or 2 steps. How many distinct ways can you climb to the top?\n\nInput Format:\nA single integer N.\n\nOutput Format:\nNumber of distinct ways.",
+        points: 150,
+        test_cases: [
+            { input: "2", expected: "2" },
+            { input: "3", expected: "3" },
+            { input: "5", expected: "8" },
+            { input: "10", expected: "89" }
+        ],
+        hints: ['This is similar to Fibonacci', 'ways(n) = ways(n-1) + ways(n-2)', 'Use dynamic programming'],
+        editorial: 'DP solution: dp[i] = dp[i-1] + dp[i-2]. Base cases: dp[1]=1, dp[2]=2.',
+        tags: ['dynamic-programming', 'recursion'],
+        time_limit: 300
+    },
+    {
+        id: 29,
+        title: "House Robber",
+        difficulty: "Medium",
+        category: "Dynamic Programming",
+        description: "You cannot rob two adjacent houses. Given an array representing money in each house, find the maximum amount you can rob.\n\nInput Format:\nFirst line: N (number of houses)\nSecond line: N integers (money in each house)\n\nOutput Format:\nMaximum amount.",
+        points: 150,
+        test_cases: [
+            { input: "4\n1 2 3 1", expected: "4" },
+            { input: "5\n2 7 9 3 1", expected: "12" },
+            { input: "3\n2 1 1", expected: "3" }
+        ],
+        hints: ['At each house, decide to rob or skip', 'dp[i] = max(dp[i-1], dp[i-2] + nums[i])', 'Track previous two values'],
+        editorial: 'DP: At each house, max of (skip this house, rob this + what we had 2 houses ago).',
+        tags: ['dynamic-programming'],
+        time_limit: 300
+    },
+    {
+        id: 30,
+        title: "Coin Change",
+        difficulty: "Hard",
+        category: "Dynamic Programming",
+        description: "Given coin denominations and a target amount, find the minimum number of coins needed. Return -1 if impossible.\n\nInput Format:\nFirst line: N (number of coin types)\nSecond line: N integers (coin values)\nThird line: Target amount\n\nOutput Format:\nMinimum coins or -1.",
+        points: 200,
+        test_cases: [
+            { input: "3\n1 2 5\n11", expected: "3" },
+            { input: "1\n2\n3", expected: "-1" },
+            { input: "1\n1\n0", expected: "0" }
+        ],
+        hints: ['Use bottom-up DP', 'dp[amount] = min coins needed', 'For each coin, update dp values'],
+        editorial: 'DP: dp[i] = min(dp[i], dp[i-coin] + 1) for each coin. Initialize dp[0]=0.',
+        tags: ['dynamic-programming', 'greedy'],
+        time_limit: 600
+    },
+    {
+        id: 31,
+        title: "Longest Increasing Subsequence",
+        difficulty: "Hard",
+        category: "Dynamic Programming",
+        description: "Find the length of the longest strictly increasing subsequence.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\nLength of LIS.",
+        points: 200,
+        test_cases: [
+            { input: "8\n10 9 2 5 3 7 101 18", expected: "4" },
+            { input: "6\n0 1 0 3 2 3", expected: "4" },
+            { input: "7\n7 7 7 7 7 7 7", expected: "1" }
+        ],
+        hints: ['O(n²) DP: dp[i] = longest ending at i', 'Compare with all previous elements', 'O(n log n) uses binary search'],
+        editorial: 'DP: dp[i] = max(dp[j] + 1) for all j < i where nums[j] < nums[i].',
+        tags: ['dynamic-programming', 'binary-search'],
+        time_limit: 600
+    },
+    {
+        id: 32,
+        title: "Edit Distance",
+        difficulty: "Hard",
+        category: "Dynamic Programming",
+        description: "Find the minimum number of operations (insert, delete, replace) to convert string1 to string2.\n\nInput Format:\nFirst line: String 1\nSecond line: String 2\n\nOutput Format:\nMinimum operations.",
+        points: 250,
+        test_cases: [
+            { input: "horse\nros", expected: "3" },
+            { input: "intention\nexecution", expected: "5" },
+            { input: "abc\nabc", expected: "0" }
+        ],
+        hints: ['Use 2D DP', 'dp[i][j] = min operations for first i and j chars', 'Consider insert, delete, replace'],
+        editorial: 'DP: dp[i][j] = dp[i-1][j-1] if same, else 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]).',
+        tags: ['dynamic-programming', 'strings'],
+        time_limit: 600
+    },
+    {
+        id: 33,
+        title: "Rotate Array",
+        difficulty: "Medium",
+        category: "Arrays",
+        description: "Rotate array to the right by K steps.\n\nInput Format:\nFirst line: N K\nSecond line: N integers\n\nOutput Format:\nRotated array.",
+        points: 150,
+        test_cases: [
+            { input: "7 3\n1 2 3 4 5 6 7", expected: "5 6 7 1 2 3 4" },
+            { input: "4 2\n-1 -100 3 99", expected: "3 99 -1 -100" }
+        ],
+        hints: ['K can be larger than N', 'Reverse entire array', 'Reverse first K, then rest'],
+        editorial: 'Optimal: Reverse all, reverse first k, reverse rest. Handle k % n.',
+        tags: ['arrays', 'math'],
+        time_limit: 300
+    },
+    {
+        id: 34,
+        title: "Product of Array Except Self",
+        difficulty: "Medium",
+        category: "Arrays",
+        description: "Return an array where each element is the product of all elements except itself. Do not use division.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\nResult array.",
+        points: 150,
+        test_cases: [
+            { input: "4\n1 2 3 4", expected: "24 12 8 6" },
+            { input: "5\n-1 1 0 -3 3", expected: "0 0 9 0 0" }
+        ],
+        hints: ['Use prefix and suffix products', 'Left pass: products of elements to left', 'Right pass: multiply by products to right'],
+        editorial: 'Two passes: compute prefix products going left, then multiply by suffix going right.',
+        tags: ['arrays', 'prefix-sum'],
+        time_limit: 300
+    },
+    {
+        id: 35,
+        title: "Find Peak Element",
+        difficulty: "Medium",
+        category: "Arrays",
+        description: "A peak element is greater than its neighbors. Find any peak element index.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\nIndex of a peak element.",
+        points: 150,
+        test_cases: [
+            { input: "4\n1 2 3 1", expected: "2" },
+            { input: "5\n1 2 1 3 5", expected: "4" }
+        ],
+        hints: ['Binary search works here', 'If mid < mid+1, peak is on right', 'Otherwise peak is on left or at mid'],
+        editorial: 'Binary search: if nums[mid] < nums[mid+1], search right; else search left.',
+        tags: ['arrays', 'binary-search'],
+        time_limit: 300
+    },
+    {
+        id: 36,
+        title: "3Sum",
+        difficulty: "Hard",
+        category: "Arrays",
+        description: "Find all unique triplets that sum to zero.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\nEach line: three space-separated numbers forming a triplet (sorted). If none, print 'none'.",
+        points: 200,
+        test_cases: [
+            { input: "6\n-1 0 1 2 -1 -4", expected: "-1 -1 2\n-1 0 1" },
+            { input: "3\n0 1 1", expected: "none" },
+            { input: "4\n0 0 0 0", expected: "0 0 0" }
+        ],
+        hints: ['Sort the array first', 'Fix one element, use two pointers for rest', 'Skip duplicates to avoid repeated triplets'],
+        editorial: 'Sort array. For each element, use two pointers to find pairs that sum to -element.',
+        tags: ['arrays', 'two-pointers', 'sorting'],
+        time_limit: 600
+    },
+    {
+        id: 37,
+        title: "Spiral Matrix",
+        difficulty: "Medium",
+        category: "Arrays",
+        description: "Return all elements of a matrix in spiral order.\n\nInput Format:\nFirst line: M N (rows cols)\nNext M lines: N integers each\n\nOutput Format:\nSpace-separated elements in spiral order.",
+        points: 150,
+        test_cases: [
+            { input: "3 3\n1 2 3\n4 5 6\n7 8 9", expected: "1 2 3 6 9 8 7 4 5" },
+            { input: "2 4\n1 2 3 4\n5 6 7 8", expected: "1 2 3 4 8 7 6 5" }
+        ],
+        hints: ['Track boundaries: top, bottom, left, right', 'Go right, down, left, up', 'Shrink boundaries after each direction'],
+        editorial: 'Simulate spiral by maintaining boundaries and shrinking them after each pass.',
+        tags: ['arrays', 'matrix', 'simulation'],
+        time_limit: 300
+    },
+    {
+        id: 38,
+        title: "Word Search",
+        difficulty: "Hard",
+        category: "Recursion",
+        description: "Given a 2D board and a word, find if the word exists in the grid. Word can be constructed from adjacent cells (horizontal/vertical).\n\nInput Format:\nFirst line: M N (rows cols)\nNext M lines: N characters (no spaces)\nLast line: Word to search\n\nOutput Format:\n'true' or 'false'.",
+        points: 200,
+        test_cases: [
+            { input: "3 4\nABCE\nSFCS\nADEE\nABCCED", expected: "true" },
+            { input: "3 4\nABCE\nSFCS\nADEE\nSEE", expected: "true" },
+            { input: "3 4\nABCE\nSFCS\nADEE\nABCB", expected: "false" }
+        ],
+        hints: ['Use DFS/backtracking', 'Mark visited cells temporarily', 'Try all 4 directions'],
+        editorial: 'DFS from each cell. Mark cell visited, explore neighbors, unmark (backtrack).',
+        tags: ['recursion', 'backtracking', 'dfs'],
+        time_limit: 600
+    },
+    {
+        id: 39,
+        title: "Unique Paths",
+        difficulty: "Medium",
+        category: "Dynamic Programming",
+        description: "A robot starts at top-left of M x N grid and can only move right or down. How many unique paths to bottom-right?\n\nInput Format:\nTwo integers M N.\n\nOutput Format:\nNumber of unique paths.",
+        points: 150,
+        test_cases: [
+            { input: "3 7", expected: "28" },
+            { input: "3 2", expected: "3" },
+            { input: "7 3", expected: "28" }
+        ],
+        hints: ['Use DP grid', 'dp[i][j] = dp[i-1][j] + dp[i][j-1]', 'First row and column are all 1s'],
+        editorial: 'DP: paths to cell = paths from above + paths from left. Base: edges = 1.',
+        tags: ['dynamic-programming', 'math'],
+        time_limit: 300
+    },
+    {
+        id: 40,
+        title: "Minimum Path Sum",
+        difficulty: "Medium",
+        category: "Dynamic Programming",
+        description: "Find a path from top-left to bottom-right with minimum sum. Can only move right or down.\n\nInput Format:\nFirst line: M N\nNext M lines: N integers\n\nOutput Format:\nMinimum path sum.",
+        points: 150,
+        test_cases: [
+            { input: "3 3\n1 3 1\n1 5 1\n4 2 1", expected: "7" },
+            { input: "2 3\n1 2 3\n4 5 6", expected: "12" }
+        ],
+        hints: ['DP on the grid', 'dp[i][j] = grid[i][j] + min(dp[i-1][j], dp[i][j-1])', 'Handle first row/column specially'],
+        editorial: 'DP: update each cell with grid value + min of top/left cell. Can do in-place.',
+        tags: ['dynamic-programming', 'matrix'],
+        time_limit: 300
+    },
+    {
+        id: 41,
+        title: "Decode Ways",
+        difficulty: "Medium",
+        category: "Dynamic Programming",
+        description: "A message with letters A-Z is encoded as 1-26. Given a digit string, count ways to decode it.\n\nInput Format:\nA string of digits.\n\nOutput Format:\nNumber of ways to decode.",
+        points: 150,
+        test_cases: [
+            { input: "12", expected: "2" },
+            { input: "226", expected: "3" },
+            { input: "06", expected: "0" }
+        ],
+        hints: ['Similar to climbing stairs', 'Check single digit (1-9) and two digits (10-26)', 'Handle leading zeros'],
+        editorial: 'DP: dp[i] = dp[i-1] (if valid single) + dp[i-2] (if valid double). Handle 0s carefully.',
+        tags: ['dynamic-programming', 'strings'],
+        time_limit: 300
+    },
+    {
+        id: 42,
+        title: "Longest Palindromic Substring",
+        difficulty: "Hard",
+        category: "Strings",
+        description: "Find the longest palindromic substring.\n\nInput Format:\nA string.\n\nOutput Format:\nLongest palindromic substring.",
+        points: 200,
+        test_cases: [
+            { input: "babad", expected: "bab" },
+            { input: "cbbd", expected: "bb" },
+            { input: "a", expected: "a" }
+        ],
+        hints: ['Expand around center', 'Try each position as center', 'Handle odd and even length palindromes'],
+        editorial: 'Expand around each center (for both odd and even lengths). Track longest found.',
+        tags: ['strings', 'dynamic-programming'],
+        time_limit: 600
+    },
+    {
+        id: 43,
+        title: "Group Anagrams",
+        difficulty: "Medium",
+        category: "Strings",
+        description: "Group strings that are anagrams of each other.\n\nInput Format:\nFirst line: N (number of strings)\nNext N lines: One string each\n\nOutput Format:\nGroups on separate lines, words space-separated, groups sorted by first word.",
+        points: 150,
+        test_cases: [
+            { input: "6\neat\ntea\ntan\nate\nnat\nbat", expected: "ate eat tea\nbat\nnat tan" },
+            { input: "1\na", expected: "a" }
+        ],
+        hints: ['Sort each string to get a key', 'Use hash map with sorted string as key', 'Group strings by their key'],
+        editorial: 'Use sorted string as key in hash map. All anagrams will have same sorted key.',
+        tags: ['strings', 'hash-map', 'sorting'],
+        time_limit: 300
+    },
+    {
+        id: 44,
+        title: "Set Matrix Zeroes",
+        difficulty: "Medium",
+        category: "Arrays",
+        description: "If an element is 0, set its entire row and column to 0. Do it in-place.\n\nInput Format:\nFirst line: M N\nNext M lines: N integers\n\nOutput Format:\nModified matrix (M lines of N integers).",
+        points: 150,
+        test_cases: [
+            { input: "3 3\n1 1 1\n1 0 1\n1 1 1", expected: "1 0 1\n0 0 0\n1 0 1" },
+            { input: "3 4\n0 1 2 0\n3 4 5 2\n1 3 1 5", expected: "0 0 0 0\n0 4 5 0\n0 3 1 0" }
+        ],
+        hints: ['Use first row/column as markers', 'First pass: mark zeros', 'Second pass: set zeros using markers'],
+        editorial: 'Use first row/col to mark. Process all cells, then set zeros based on markers.',
+        tags: ['arrays', 'matrix'],
+        time_limit: 300
+    },
+    {
+        id: 45,
+        title: "Pow(x, n)",
+        difficulty: "Medium",
+        category: "Math",
+        description: "Implement pow(x, n), which calculates x raised to the power n.\n\nInput Format:\nFirst line: x (float)\nSecond line: n (integer)\n\nOutput Format:\nResult rounded to 5 decimal places.",
+        points: 150,
+        test_cases: [
+            { input: "2.00000\n10", expected: "1024.00000" },
+            { input: "2.10000\n3", expected: "9.26100" },
+            { input: "2.00000\n-2", expected: "0.25000" }
+        ],
+        hints: ['Use binary exponentiation', 'x^n = (x^(n/2))^2', 'Handle negative exponents'],
+        editorial: 'Binary exponentiation: x^n = (x^2)^(n/2). Handle negative n by 1/x^|n|.',
+        tags: ['math', 'recursion'],
+        time_limit: 300
+    },
+    {
+        id: 46,
+        title: "Subsets",
+        difficulty: "Medium",
+        category: "Recursion",
+        description: "Generate all possible subsets (power set) of a set of distinct integers.\n\nInput Format:\nFirst line: N (size)\nSecond line: N distinct integers\n\nOutput Format:\nEach line is a subset (space-separated, sorted). Empty set on first line.",
+        points: 150,
+        test_cases: [
+            { input: "3\n1 2 3", expected: "\n1\n1 2\n1 2 3\n1 3\n2\n2 3\n3" },
+            { input: "1\n0", expected: "\n0" }
+        ],
+        hints: ['Use backtracking', 'At each element, include or exclude', 'Can also use bit manipulation'],
+        editorial: 'Backtracking: for each element, branch into include/exclude. Or iterate 0 to 2^n-1.',
+        tags: ['recursion', 'backtracking', 'bit-manipulation'],
+        time_limit: 300
+    },
+    {
+        id: 47,
+        title: "Permutations",
+        difficulty: "Medium",
+        category: "Recursion",
+        description: "Generate all permutations of a list of distinct integers.\n\nInput Format:\nFirst line: N (size)\nSecond line: N distinct integers\n\nOutput Format:\nEach line is a permutation (space-separated).",
+        points: 150,
+        test_cases: [
+            { input: "3\n1 2 3", expected: "1 2 3\n1 3 2\n2 1 3\n2 3 1\n3 1 2\n3 2 1" },
+            { input: "1\n1", expected: "1" }
+        ],
+        hints: ['Use backtracking', 'Swap elements to generate permutations', 'Track used elements'],
+        editorial: 'Backtracking: at each position, try all unused elements. Swap and recurse.',
+        tags: ['recursion', 'backtracking'],
+        time_limit: 300
+    },
+    {
+        id: 48,
+        title: "N-Queens",
+        difficulty: "Hard",
+        category: "Recursion",
+        description: "Place N queens on an N×N chessboard so that no two queens attack each other. Print the number of solutions.\n\nInput Format:\nA single integer N.\n\nOutput Format:\nNumber of distinct solutions.",
+        points: 250,
+        test_cases: [
+            { input: "4", expected: "2" },
+            { input: "1", expected: "1" },
+            { input: "8", expected: "92" }
+        ],
+        hints: ['Place queens row by row', 'Check column, main and anti diagonals', 'Use backtracking when conflict'],
+        editorial: 'Backtracking: place queen in each row, checking column and diagonal conflicts.',
+        tags: ['recursion', 'backtracking'],
+        time_limit: 600
+    },
+    {
+        id: 49,
+        title: "Jump Game",
+        difficulty: "Medium",
+        category: "Dynamic Programming",
+        description: "Given array where each element is max jump length, determine if you can reach the last index from first.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers\n\nOutput Format:\n'true' or 'false'.",
+        points: 150,
+        test_cases: [
+            { input: "5\n2 3 1 1 4", expected: "true" },
+            { input: "5\n3 2 1 0 4", expected: "false" },
+            { input: "1\n0", expected: "true" }
+        ],
+        hints: ['Track the farthest reachable position', 'Iterate and update max reach', 'If current index > max reach, impossible'],
+        editorial: 'Greedy: track maxReach. If i <= maxReach, update maxReach = max(maxReach, i + nums[i]).',
+        tags: ['dynamic-programming', 'greedy'],
+        time_limit: 300
+    },
+    {
+        id: 50,
+        title: "Trapping Rain Water",
+        difficulty: "Hard",
+        category: "Arrays",
+        description: "Given n non-negative integers representing elevation map, compute how much water can be trapped after raining.\n\nInput Format:\nFirst line: N (size)\nSecond line: N integers (heights)\n\nOutput Format:\nTotal trapped water.",
+        points: 250,
+        test_cases: [
+            { input: "12\n0 1 0 2 1 0 1 3 2 1 2 1", expected: "6" },
+            { input: "6\n4 2 0 3 2 5", expected: "9" },
+            { input: "3\n1 2 1", expected: "0" }
+        ],
+        hints: ['Water at each position = min(leftMax, rightMax) - height', 'Precompute left and right max arrays', 'Or use two pointers for O(1) space'],
+        editorial: 'Two pointers: move pointer with smaller max inward, add water based on max - height.',
+        tags: ['arrays', 'two-pointers', 'dynamic-programming'],
+        time_limit: 600
     }
 ];
+
 
 async function seedDatabase() {
     try {
@@ -1075,8 +1496,8 @@ async function updateUserActivity(userId, xpEarned = 0, challengeSolved = false,
     return { streak: 0, bestStreak: 0 };
 }
 
-// Get user activity (heat map data)
-app.get('/api/activity/:userId', async (req, res) => {
+// Get user activity (heat map data) - by specific user ID
+app.get('/api/user-activity/:userId', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('user_activity')
@@ -2730,50 +3151,146 @@ app.get('/api/activity/feed', async (req, res) => {
 // LEARNING PATHS API
 // ============================================
 
-// Get learning paths
-app.get('/api/learn/paths', async (req, res) => {
+// Get all learning paths with challenge counts
+app.get('/api/learning-paths', async (req, res) => {
+    console.log('=== LEARNING PATHS ENDPOINT HIT ===');
     try {
-        const { data } = await supabase
+        // Get all active paths
+        const { data: paths, error } = await supabase
             .from('learning_paths')
             .select('*')
-            .order('order_index', { ascending: true });
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true });
 
-        res.json(data || []);
+        console.log('Learning paths query result:', { pathsCount: paths?.length, error: error?.message });
+
+        if (error) {
+            console.error('Learning paths query error:', error);
+            return res.status(200).json([]);
+        }
+
+        if (!paths || paths.length === 0) {
+            console.log('No learning paths found in database');
+            return res.status(200).json([]);
+        }
+
+        // Get challenge counts for each path
+        const pathsWithCounts = await Promise.all((paths || []).map(async (path) => {
+            const { data: challenges } = await supabase
+                .from('learning_path_challenges')
+                .select('challenge_id')
+                .eq('path_id', path.id);
+
+            return {
+                ...path,
+                challengeCount: challenges?.length || 0,
+                challengeIds: (challenges || []).map(c => c.challenge_id)
+            };
+        }));
+
+        console.log('Returning', pathsWithCounts.length, 'learning paths');
+        res.json(pathsWithCounts);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch learning paths' });
+        console.error('Learning paths crash:', err);
+        res.status(200).json([]);
     }
 });
 
-// Start a learning path
-app.post('/api/learn/paths/:id/start', authenticate, async (req, res) => {
+// Get a single learning path with its challenges
+app.get('/api/learning-paths/:id', async (req, res) => {
     try {
-        const pathId = req.params.id;
+        const pathId = parseInt(req.params.id);
 
-        // Get path and its challenges
-        const { data: path } = await supabase
+        // Get the path
+        const { data: path, error } = await supabase
             .from('learning_paths')
-            .select('*, challenges:challenge_ids')
+            .select('*')
             .eq('id', pathId)
             .single();
 
-        if (!path) {
+        if (error || !path) {
             return res.status(404).json({ error: 'Path not found' });
         }
 
-        // Record that user started this path
-        await supabase.from('user_learning_progress').upsert({
-            user_id: req.userId,
-            path_id: pathId,
-            started_at: new Date().toISOString()
+        // Get challenges for this path
+        const { data: pathChallenges } = await supabase
+            .from('learning_path_challenges')
+            .select('challenge_id, sort_order')
+            .eq('path_id', pathId)
+            .order('sort_order', { ascending: true });
+
+        const challengeIds = (pathChallenges || []).map(pc => pc.challenge_id);
+
+        // Get full challenge details
+        const { data: challenges } = await supabase
+            .from('challenges')
+            .select('id, title, difficulty, category, points')
+            .in('id', challengeIds);
+
+        // Sort challenges by path order
+        const sortedChallenges = challengeIds.map(id =>
+            challenges?.find(c => c.id === id)
+        ).filter(Boolean);
+
+        res.json({
+            ...path,
+            challenges: sortedChallenges
         });
+    } catch (err) {
+        console.error('Single path crash:', err);
+        res.status(500).json({ error: 'Failed to fetch path' });
+    }
+});
+
+// Start a learning path (track user progress)
+app.post('/api/learning-paths/:id/start', authenticate, async (req, res) => {
+    try {
+        const pathId = parseInt(req.params.id);
+
+        // Record that user started this path
+        const { error } = await supabase
+            .from('user_path_progress')
+            .upsert({
+                user_id: req.userId,
+                path_id: pathId,
+                started_at: new Date().toISOString()
+            }, { onConflict: 'user_id,path_id' });
+
+        if (error) {
+            console.error('Start path error:', error);
+        }
+
+        // Get the first challenge in this path
+        const { data: firstChallenge } = await supabase
+            .from('learning_path_challenges')
+            .select('challenge_id')
+            .eq('path_id', pathId)
+            .order('sort_order', { ascending: true })
+            .limit(1)
+            .single();
 
         res.json({
             status: 'started',
-            path: path,
-            challengeIds: path.challenge_ids || []
+            firstChallengeId: firstChallenge?.challenge_id || null
         });
     } catch (err) {
+        console.error('Start path crash:', err);
         res.status(500).json({ error: 'Failed to start path' });
+    }
+});
+
+// Get user's path progress
+app.get('/api/learning-paths/progress', authenticate, async (req, res) => {
+    try {
+        const { data: progress } = await supabase
+            .from('user_path_progress')
+            .select('path_id, started_at, completed_at')
+            .eq('user_id', req.userId);
+
+        res.json(progress || []);
+    } catch (err) {
+        console.error('Path progress crash:', err);
+        res.status(200).json([]);
     }
 });
 
